@@ -7,6 +7,8 @@ import * as BackendApp from '../wailsjs/go/main/App';
 vi.mock('../wailsjs/go/main/App', () => ({
   AddConnection: vi.fn().mockResolvedValue(null),
   AddDevice: vi.fn().mockResolvedValue(null),
+  AddRegisterGroup: vi.fn().mockResolvedValue(null),
+  AddRegisterDefinition: vi.fn().mockResolvedValue(null),
   StartPolling: vi.fn().mockResolvedValue(null),
 }));
 

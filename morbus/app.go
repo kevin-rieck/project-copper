@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"morbus/backend/engine"
+
+	"github.com/simonvetter/modbus"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -51,9 +53,15 @@ func (a *App) AddDevice(id string, connID string, slaveID uint8) error {
 	return a.Engine.AddDevice(id, connID, slaveID)
 }
 
-// AddWatch adds a register to be continuously polled
-func (a *App) AddWatch(deviceID string, register uint16, count uint16, dataType string) error {
-	return a.Engine.AddWatch(deviceID, register, count, dataType)
+// AddRegisterGroup adds a logical group of registers
+func (a *App) AddRegisterGroup(deviceID string, groupID string, table uint8) error {
+	// Wails usually passes uint8 as integer, we cast to modbus.RegType
+	return a.Engine.AddRegisterGroup(deviceID, groupID, modbus.RegType(table))
+}
+
+// AddRegisterDefinition adds an individual register to a group
+func (a *App) AddRegisterDefinition(deviceID string, groupID string, register uint16, count uint16, dataType string) error {
+	return a.Engine.AddRegisterDefinition(deviceID, groupID, register, count, dataType)
 }
 
 // StartPolling begins the background polling loop

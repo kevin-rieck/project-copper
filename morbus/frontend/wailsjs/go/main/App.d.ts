@@ -5,6 +5,8 @@ export function AddConnection(arg1:string,arg2:string):Promise<void>;
 
 export function AddDevice(arg1:string,arg2:string,arg3:number):Promise<void>;
 
-export function AddWatch(arg1:string,arg2:number,arg3:number,arg4:string):Promise<void>;
+export function AddRegisterDefinition(arg1:string,arg2:string,arg3:number,arg4:number,arg5:string):Promise<void>;
+
+export function AddRegisterGroup(arg1:string,arg2:string,arg3:number):Promise<void>;
 
 export function StartPolling():Promise<void>;

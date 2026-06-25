@@ -16,17 +16,23 @@ type Connection struct {
 	client *modbus.ModbusClient
 }
 
-type Watch struct {
+type RegisterDefinition struct {
 	Register uint16 `json:"register"`
 	Count    uint16 `json:"count"`
 	DataType string `json:"data_type"`
 }
 
+type RegisterGroup struct {
+	ID          string               `json:"id"`
+	ModbusTable modbus.RegType       `json:"modbus_table"`
+	Definitions []RegisterDefinition `json:"definitions"`
+}
+
 type Device struct {
-	ID       string
-	ConnID   string
-	SlaveID  uint8
-	Watches  []Watch
+	ID      string                    `json:"id"`
+	ConnID  string                    `json:"conn_id"`
+	SlaveID uint8                     `json:"slave_id"`
+	Groups  map[string]*RegisterGroup `json:"groups"`
 }
 
 type Engine struct {
@@ -53,7 +59,7 @@ func (e *Engine) AddConnection(id string, uri string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	e.connections[id] = &Connection{
 		ID:     id,
 		URI:    uri,
@@ -63,24 +69,38 @@ func (e *Engine) AddConnection(id string, uri string) error {
 }
 
 func (e *Engine) AddDevice(id string, connID string, slaveID uint8) error {
-	if _, ok := e.connections[connID]; !ok {
-		return fmt.Errorf("connection %s not found", connID)
-	}
 	e.devices[id] = &Device{
 		ID:      id,
 		ConnID:  connID,
 		SlaveID: slaveID,
-		Watches: make([]Watch, 0),
+		Groups:  make(map[string]*RegisterGroup),
 	}
 	return nil
 }
 
-func (e *Engine) AddWatch(deviceID string, register uint16, count uint16, dataType string) error {
+func (e *Engine) AddRegisterGroup(deviceID string, groupID string, table modbus.RegType) error {
 	dev, ok := e.devices[deviceID]
 	if !ok {
 		return fmt.Errorf("device %s not found", deviceID)
 	}
-	dev.Watches = append(dev.Watches, Watch{
+	dev.Groups[groupID] = &RegisterGroup{
+		ID:          groupID,
+		ModbusTable: table,
+		Definitions: make([]RegisterDefinition, 0),
+	}
+	return nil
+}
+
+func (e *Engine) AddRegisterDefinition(deviceID string, groupID string, register uint16, count uint16, dataType string) error {
+	dev, ok := e.devices[deviceID]
+	if !ok {
+		return fmt.Errorf("device %s not found", deviceID)
+	}
+	group, ok := dev.Groups[groupID]
+	if !ok {
+		return fmt.Errorf("group %s not found in device %s", groupID, deviceID)
+	}
+	group.Definitions = append(group.Definitions, RegisterDefinition{
 		Register: register,
 		Count:    count,
 		DataType: dataType,
@@ -93,35 +113,69 @@ func (e *Engine) PollDevice(deviceID string) (map[uint16]interface{}, error) {
 	if !ok {
 		return nil, fmt.Errorf("device %s not found", deviceID)
 	}
+
 	conn, ok := e.connections[dev.ConnID]
 	if !ok {
 		return nil, fmt.Errorf("connection %s not found", dev.ConnID)
 	}
 
-	// Open connection if not already open
 	err := conn.client.Open()
 	if err != nil {
 		return nil, err
 	}
-	// Note: We don't defer Close() here to keep the connection persistent.
-	// A proper connection manager would handle reconnects and keep-alives.
 
 	conn.client.SetUnitId(dev.SlaveID)
 
 	results := make(map[uint16]interface{})
 
-	for _, watch := range dev.Watches {
-		regs, err := conn.client.ReadRegisters(watch.Register, watch.Count, modbus.HOLDING_REGISTER)
+	for _, group := range dev.Groups {
+		if len(group.Definitions) == 0 {
+			continue
+		}
+
+		minReg := uint16(0xFFFF)
+		var maxReg uint16 = 0
+
+		for _, def := range group.Definitions {
+			if def.Register < minReg {
+				minReg = def.Register
+			}
+			endReg := def.Register + def.Count - 1
+			if endReg > maxReg {
+				maxReg = endReg
+			}
+		}
+
+		quantity := maxReg - minReg + 1
+
+		var regs []uint16
+		switch group.ModbusTable {
+		case modbus.HOLDING_REGISTER:
+			regs, err = conn.client.ReadRegisters(minReg, quantity, modbus.HOLDING_REGISTER)
+		case modbus.INPUT_REGISTER:
+			regs, err = conn.client.ReadRegisters(minReg, quantity, modbus.INPUT_REGISTER)
+		default:
+			return nil, fmt.Errorf("unsupported table %d", group.ModbusTable)
+		}
+
 		if err != nil {
 			return nil, err
 		}
-		
-		if watch.DataType == "float32" && len(regs) >= 2 {
-			val := math.Float32frombits(uint32(regs[0])<<16 | uint32(regs[1]))
-			results[watch.Register] = val
-		} else if watch.DataType == "uint16" {
-			for i, val := range regs {
-				results[watch.Register+uint16(i)] = val
+
+		for _, def := range group.Definitions {
+			offset := def.Register - minReg
+
+			if def.DataType == "float32" && def.Count == 2 {
+				if offset+1 < uint16(len(regs)) {
+					val := math.Float32frombits(uint32(regs[offset])<<16 | uint32(regs[offset+1]))
+					results[def.Register] = val
+				}
+			} else if def.DataType == "uint16" {
+				for i := uint16(0); i < def.Count; i++ {
+					if offset+i < uint16(len(regs)) {
+						results[def.Register+i] = regs[offset+i]
+					}
+				}
 			}
 		}
 	}
@@ -131,7 +185,7 @@ func (e *Engine) PollDevice(deviceID string) (map[uint16]interface{}, error) {
 
 func (e *Engine) StartPolling(interval time.Duration) {
 	if e.stopChan != nil {
-		return // already polling
+		return
 	}
 	e.stopChan = make(chan struct{})
 
@@ -181,10 +235,10 @@ type ConnectionConfig struct {
 }
 
 type DeviceConfig struct {
-	ID      string  `json:"id"`
-	ConnID  string  `json:"conn_id"`
-	SlaveID uint8   `json:"slave_id"`
-	Watches []Watch `json:"watches"`
+	ID      string                   `json:"id"`
+	ConnID  string                   `json:"conn_id"`
+	SlaveID uint8                    `json:"slave_id"`
+	Groups  map[string]RegisterGroup `json:"groups"`
 }
 
 func (e *Engine) SaveConfig(path string) error {
@@ -198,12 +252,16 @@ func (e *Engine) SaveConfig(path string) error {
 	}
 
 	for _, d := range e.devices {
-		cfg.Devices = append(cfg.Devices, DeviceConfig{
+		devCfg := DeviceConfig{
 			ID:      d.ID,
 			ConnID:  d.ConnID,
 			SlaveID: d.SlaveID,
-			Watches: d.Watches,
-		})
+			Groups:  make(map[string]RegisterGroup),
+		}
+		for k, v := range d.Groups {
+			devCfg.Groups[k] = *v
+		}
+		cfg.Devices = append(cfg.Devices, devCfg)
 	}
 
 	data, err := json.MarshalIndent(cfg, "", "  ")
@@ -235,7 +293,10 @@ func (e *Engine) LoadConfig(path string) error {
 			return err
 		}
 		dev := e.devices[d.ID]
-		dev.Watches = d.Watches
+		for k, v := range d.Groups {
+			val := v
+			dev.Groups[k] = &val
+		}
 	}
 
 	return nil

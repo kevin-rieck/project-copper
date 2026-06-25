@@ -10,8 +10,12 @@ export function AddDevice(arg1, arg2, arg3) {
   return window['go']['main']['App']['AddDevice'](arg1, arg2, arg3);
 }
 
-export function AddWatch(arg1, arg2, arg3, arg4) {
-  return window['go']['main']['App']['AddWatch'](arg1, arg2, arg3, arg4);
+export function AddRegisterDefinition(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['AddRegisterDefinition'](arg1, arg2, arg3, arg4, arg5);
+}
+
+export function AddRegisterGroup(arg1, arg2, arg3) {
+  return window['go']['main']['App']['AddRegisterGroup'](arg1, arg2, arg3);
 }
 
 export function StartPolling() {

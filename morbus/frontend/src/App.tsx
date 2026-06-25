@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { AddConnection, AddDevice, StartPolling } from '../../wailsjs/go/main/App';
-import { EventsOn } from '../../wailsjs/runtime/runtime';
+import { AddConnection, AddDevice, StartPolling, AddRegisterGroup, AddRegisterDefinition } from '../wailsjs/go/main/App';
+import { EventsOn } from '../wailsjs/runtime/runtime';
+import { RegisterBrowser } from './RegisterBrowser';
 
 export default function App() {
   const [modbusData, setModbusData] = useState<any>(null);
@@ -28,6 +29,13 @@ export default function App() {
     try {
       await AddConnection("conn1", "tcp://192.168.1.50:502");
       await AddDevice("dev1", "conn1", 1);
+      
+      // 3 = HOLDING_REGISTER
+      await AddRegisterGroup("dev1", "group1", 3); 
+      // Add definitions (using 0-indexed offsets for typical Modbus RTU/TCP instead of 40001 notation)
+      await AddRegisterDefinition("dev1", "group1", 0, 1, "uint16"); // Address 0 (40001)
+      await AddRegisterDefinition("dev1", "group1", 1, 2, "float32"); // Address 1 (40002)
+      
       await StartPolling();
       console.log("Connected and polling started");
     } catch (err) {
@@ -146,107 +154,9 @@ export default function App() {
               </div>
             </div>
 
-            {/* Device Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-gutter">
-              
-              {/* Connected Device Card 1 */}
-              <div className="bg-surface-container border border-outline-variant rounded p-4 flex flex-col hover:border-primary transition-colors group relative overflow-hidden">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="text-headline-md font-headline-md text-on-surface mb-1 truncate" title="Main PLC Rack 1">Main PLC Rack 1</h3>
-                    <div className="flex items-center gap-2">
-                      <span className={`w-2 h-2 rounded-full ${deviceStatus === 'Connected' ? 'bg-green-500 status-glow-active' : 'bg-red-500 status-glow-inactive'}`}></span>
-                      <span className={`text-label-caps font-label-caps ${deviceStatus === 'Connected' ? 'text-on-surface-variant' : 'text-error'}`}>{deviceStatus}</span>
-                    </div>
-                  </div>
-                  <button className="text-on-surface-variant hover:text-primary p-1 rounded hover:bg-surface-container-highest transition-colors">
-                    <span className="material-symbols-outlined">more_vert</span>
-                  </button>
-                </div>
-                <div className="space-y-3 mb-6 flex-1">
-                  <div>
-                    <span className="text-label-caps font-label-caps text-on-surface-variant block mb-0.5">IP ADDRESS</span>
-                    <span className="text-data-mono font-data-mono text-primary">192.168.1.50</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <span className="text-label-caps font-label-caps text-on-surface-variant block mb-0.5">PROTOCOL</span>
-                      <span className="text-body-sm font-body-sm text-on-surface">Modbus TCP</span>
-                    </div>
-                    <div>
-                      <span className="text-label-caps font-label-caps text-on-surface-variant block mb-0.5">REGISTER DATA</span>
-                      <span className="text-data-mono font-data-mono text-on-surface">
-                        {modbusData ? JSON.stringify(modbusData) : "Waiting..."}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between border-t border-outline-variant pt-3 mt-auto">
-                  <div className="flex gap-2">
-                    <button className="text-on-surface-variant hover:text-primary p-1 rounded bg-surface-container-highest transition-colors" title="Settings">
-                      <span className="material-symbols-outlined text-sm">settings</span>
-                    </button>
-                    <button className="text-on-surface-variant hover:text-primary p-1 rounded bg-surface-container-highest transition-colors" title="Browser">
-                      <span className="material-symbols-outlined text-sm">table_chart</span>
-                    </button>
-                  </div>
-                  <button className="text-label-caps font-label-caps text-error border border-error/50 hover:bg-error/10 px-2 py-1 rounded transition-colors">
-                    Disconnect
-                  </button>
-                </div>
-              </div>
-
-              {/* Disconnected Device Card */}
-              <div className="bg-surface-container border border-outline-variant rounded p-4 flex flex-col hover:border-outline transition-colors group relative overflow-hidden opacity-70">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="text-headline-md font-headline-md text-on-surface mb-1 truncate" title="Sensor Array 04">Sensor Array 04</h3>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-red-500 status-glow-inactive"></span>
-                      <span className="text-label-caps font-label-caps text-error">Offline</span>
-                    </div>
-                  </div>
-                  <button className="text-on-surface-variant hover:text-on-surface p-1 rounded hover:bg-surface-container-highest transition-colors">
-                    <span className="material-symbols-outlined">more_vert</span>
-                  </button>
-                </div>
-                <div className="space-y-3 mb-6 flex-1">
-                  <div>
-                    <span className="text-label-caps font-label-caps text-on-surface-variant block mb-0.5">SERIAL PORT</span>
-                    <span className="text-data-mono font-data-mono text-on-surface-variant">COM3 (9600, 8, N, 1)</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <span className="text-label-caps font-label-caps text-on-surface-variant block mb-0.5">PROTOCOL</span>
-                      <span className="text-body-sm font-body-sm text-on-surface-variant">Modbus RTU</span>
-                    </div>
-                    <div>
-                      <span className="text-label-caps font-label-caps text-on-surface-variant block mb-0.5">LAST SEEN</span>
-                      <span className="text-data-mono font-data-mono text-on-surface-variant">2h ago</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between border-t border-outline-variant pt-3 mt-auto">
-                  <div className="flex gap-2">
-                    <button className="text-on-surface-variant hover:text-on-surface p-1 rounded bg-surface-container-highest transition-colors" title="Settings">
-                      <span className="material-symbols-outlined text-sm">settings</span>
-                    </button>
-                  </div>
-                  <button className="text-label-caps font-label-caps text-primary border border-primary/50 hover:bg-primary/10 px-2 py-1 rounded transition-colors">
-                    Reconnect
-                  </button>
-                </div>
-              </div>
-
-              {/* Add New Device */}
-              <button className="bg-surface-container-low border-2 border-dashed border-outline-variant hover:border-primary hover:bg-surface-container rounded p-4 flex flex-col items-center justify-center min-h-[220px] transition-all group">
-                <div className="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center mb-3 group-hover:bg-primary/20 group-hover:text-primary transition-colors">
-                  <span className="material-symbols-outlined text-3xl">add</span>
-                </div>
-                <span className="text-headline-md font-headline-md text-on-surface group-hover:text-primary transition-colors">Add Device</span>
-                <span className="text-body-sm font-body-sm text-on-surface-variant text-center mt-1">Configure a new Modbus TCP or RTU connection.</span>
-              </button>
-
+            {/* Register Browser */}
+            <div className="h-[calc(100vh-140px)] w-full border border-outline-variant rounded overflow-hidden">
+              <RegisterBrowser data={modbusData || {}} />
             </div>
           </div>
         </main>
