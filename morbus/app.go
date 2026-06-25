@@ -28,7 +28,7 @@ func NewApp() *App {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	
-	a.Engine.OnData = func(deviceID string, results map[uint16]interface{}) {
+	a.Engine.OnData = func(deviceID string, results map[uint16]engine.PollResult) {
 		runtime.EventsEmit(ctx, "modbusData", map[string]interface{}{
 			"deviceID": deviceID,
 			"data":     results,

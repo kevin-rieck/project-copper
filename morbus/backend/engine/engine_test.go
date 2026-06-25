@@ -76,11 +76,18 @@ func TestEngineBlockPolling(t *testing.T) {
 	}
 
 	// Verify we got both answers correctly
-	if res[1] != uint16(42) {
-		t.Errorf("Expected 42 at offset 1, got %v", res[1])
+	if res[1].Value != uint16(42) {
+		t.Errorf("Expected 42 at offset 1, got %v", res[1].Value)
 	}
-	if res[5] != uint16(99) {
-		t.Errorf("Expected 99 at offset 5, got %v", res[5])
+	if len(res[1].Raw) != 1 || res[1].Raw[0] != 42 {
+		t.Errorf("Expected Raw to be [42], got %v", res[1].Raw)
+	}
+
+	if res[5].Value != uint16(99) {
+		t.Errorf("Expected 99 at offset 5, got %v", res[5].Value)
+	}
+	if len(res[5].Raw) != 1 || res[5].Raw[0] != 99 {
+		t.Errorf("Expected Raw to be [99], got %v", res[5].Raw)
 	}
 
 	// The crucial test: Did it execute in exactly ONE block read?

@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { decodeModbusBuffer, ByteOrder } from './utils/decoder';
 
 interface RegisterBrowserProps {
     data: Record<string, any>;
@@ -10,6 +11,13 @@ export const RegisterBrowser: React.FC<RegisterBrowserProps> = ({ data }) => {
         { register: 0, name: "Drive Speed Cmd", type: "UInt16" },
         { register: 1, name: "Drive Current Phase A", type: "Float32" },
     ];
+
+    const [selectedReg, setSelectedReg] = useState<number | null>(null);
+    const [byteOrders, setByteOrders] = useState<Record<number, ByteOrder>>({});
+
+    const selectedDef = selectedReg !== null ? definitions.find(d => d.register === selectedReg) : null;
+    const selectedData = selectedReg !== null ? data[selectedReg] : null;
+    const selectedByteOrder = selectedReg !== null ? (byteOrders[selectedReg] || 'ABCD') : 'ABCD';
 
     return (
         <main className="flex-1 flex overflow-hidden bg-background h-full w-full text-on-background font-body-sm">
@@ -56,13 +64,23 @@ export const RegisterBrowser: React.FC<RegisterBrowserProps> = ({ data }) => {
                         </thead>
                         <tbody className="text-sm font-data-mono">
                             {definitions.map((def) => {
-                                const val = data[def.register];
-                                const displayVal = val !== undefined ? val.toString() : "--";
+                                const pollResult = data[def.register];
+                                const bo = byteOrders[def.register] || 'ABCD';
+                                const decodedVal = pollResult?.raw ? decodeModbusBuffer(pollResult.raw, def.type, bo) : undefined;
+                                const displayVal = decodedVal !== undefined ? decodedVal.toString() : "--";
+                                const rawHex = pollResult?.raw 
+                                    ? pollResult.raw.map((w: number) => "0x" + w.toString(16).padStart(4, '0').toUpperCase()).join(" ") 
+                                    : "0x----";
+
                                 return (
-                                    <tr key={def.register} className="border-b border-outline-variant hover:bg-surface-container-lowest cursor-pointer">
+                                    <tr 
+                                        key={def.register} 
+                                        onClick={() => setSelectedReg(def.register)}
+                                        className={`border-b border-outline-variant hover:bg-surface-container-lowest cursor-pointer ${selectedReg === def.register ? 'bg-surface-container-highest border-l-2 border-l-primary' : ''}`}
+                                    >
                                         <td className="px-4 py-2.5 text-secondary">{def.register}</td>
                                         <td className="px-4 py-2.5 font-body-sm text-on-surface">{def.name}</td>
-                                        <td className="px-4 py-2.5 text-on-surface-variant">0x----</td>
+                                        <td className="px-4 py-2.5 text-on-surface-variant">{rawHex}</td>
                                         <td className="px-4 py-2.5 font-bold text-primary">{displayVal}</td>
                                         <td className="px-4 py-2.5"><span className="px-1.5 py-0.5 rounded bg-surface-container-highest text-on-surface-variant text-[11px] border border-outline-variant">{def.type}</span></td>
                                     </tr>
@@ -82,9 +100,52 @@ export const RegisterBrowser: React.FC<RegisterBrowserProps> = ({ data }) => {
                     </div>
                 </div>
                 <div className="p-4 space-y-6">
-                    <div>
-                        <h3 className="text-base font-semibold text-on-surface leading-tight">Drive Speed Cmd</h3>
-                    </div>
+                    {selectedDef ? (
+                        <>
+                            <div>
+                                <h3 className="text-base font-semibold text-on-surface leading-tight">{selectedDef.name}</h3>
+                                <p className="text-body-sm text-on-surface-variant">Address: {selectedDef.register}</p>
+                            </div>
+                            
+                            <div>
+                                <span className="text-label-caps font-label-caps text-on-surface-variant block mb-1">RAW HEX BUFFER</span>
+                                <div className="bg-surface-container-lowest border border-outline-variant rounded p-2 text-data-mono font-data-mono text-primary text-sm tracking-wider">
+                                    {selectedData?.raw 
+                                        ? selectedData.raw.map((w: number) => "0x" + w.toString(16).padStart(4, '0').toUpperCase()).join(" ") 
+                                        : "----"}
+                                </div>
+                            </div>
+
+                            <div>
+                                <span className="text-label-caps font-label-caps text-on-surface-variant block mb-1">DECODED VALUE</span>
+                                <div className="text-headline-md font-headline-md text-on-surface">
+                                    {selectedData?.raw ? decodeModbusBuffer(selectedData.raw, selectedDef.type, selectedByteOrder).toString() : "--"}
+                                </div>
+                                <span className="inline-block mt-1 px-1.5 py-0.5 rounded bg-surface-container-highest text-on-surface-variant text-[11px] border border-outline-variant">
+                                    {selectedDef.type}
+                                </span>
+                            </div>
+
+                            <div>
+                                <span className="text-label-caps font-label-caps text-on-surface-variant block mb-1">BYTE ORDER</span>
+                                <select 
+                                    className="w-full bg-surface-container-lowest border border-outline-variant rounded px-2 py-1.5 text-sm text-on-surface outline-none focus:border-primary"
+                                    value={selectedByteOrder}
+                                    onChange={(e) => setByteOrders({ ...byteOrders, [selectedReg!]: e.target.value as ByteOrder })}
+                                >
+                                    <option value="ABCD">Big Endian (ABCD)</option>
+                                    <option value="DCBA">Little Endian (DCBA)</option>
+                                    <option value="BADC">Byte Swap (BADC)</option>
+                                    <option value="CDAB">Word Swap (CDAB)</option>
+                                </select>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-full text-on-surface-variant opacity-60 pt-10">
+                            <span className="material-symbols-outlined text-4xl mb-2">touch_app</span>
+                            <p className="text-center text-sm">Select a register<br/>to inspect its data.</p>
+                        </div>
+                    )}
                 </div>
             </aside>
         </main>

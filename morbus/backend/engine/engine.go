@@ -22,6 +22,11 @@ type RegisterDefinition struct {
 	DataType string `json:"data_type"`
 }
 
+type PollResult struct {
+	Value interface{} `json:"value"`
+	Raw   []uint16    `json:"raw"`
+}
+
 type RegisterGroup struct {
 	ID          string               `json:"id"`
 	ModbusTable modbus.RegType       `json:"modbus_table"`
@@ -39,7 +44,7 @@ type Engine struct {
 	connections map[string]*Connection
 	devices     map[string]*Device
 
-	OnData  func(deviceID string, results map[uint16]interface{})
+	OnData  func(deviceID string, results map[uint16]PollResult)
 	OnError func(deviceID string, err error)
 
 	stopChan chan struct{}
@@ -108,7 +113,7 @@ func (e *Engine) AddRegisterDefinition(deviceID string, groupID string, register
 	return nil
 }
 
-func (e *Engine) PollDevice(deviceID string) (map[uint16]interface{}, error) {
+func (e *Engine) PollDevice(deviceID string) (map[uint16]PollResult, error) {
 	dev, ok := e.devices[deviceID]
 	if !ok {
 		return nil, fmt.Errorf("device %s not found", deviceID)
@@ -126,7 +131,7 @@ func (e *Engine) PollDevice(deviceID string) (map[uint16]interface{}, error) {
 
 	conn.client.SetUnitId(dev.SlaveID)
 
-	results := make(map[uint16]interface{})
+	results := make(map[uint16]PollResult)
 
 	for _, group := range dev.Groups {
 		if len(group.Definitions) == 0 {
@@ -168,12 +173,18 @@ func (e *Engine) PollDevice(deviceID string) (map[uint16]interface{}, error) {
 			if def.DataType == "float32" && def.Count == 2 {
 				if offset+1 < uint16(len(regs)) {
 					val := math.Float32frombits(uint32(regs[offset])<<16 | uint32(regs[offset+1]))
-					results[def.Register] = val
+					results[def.Register] = PollResult{
+						Value: val,
+						Raw:   []uint16{regs[offset], regs[offset+1]},
+					}
 				}
 			} else if def.DataType == "uint16" {
 				for i := uint16(0); i < def.Count; i++ {
 					if offset+i < uint16(len(regs)) {
-						results[def.Register+i] = regs[offset+i]
+						results[def.Register+i] = PollResult{
+							Value: regs[offset+i],
+							Raw:   []uint16{regs[offset+i]},
+						}
 					}
 				}
 			}
