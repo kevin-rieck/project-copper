@@ -59,9 +59,13 @@ func (a *App) AddRegisterGroup(deviceID string, groupID string, table uint8) err
 	return a.Engine.AddRegisterGroup(deviceID, groupID, modbus.RegType(table))
 }
 
-// AddRegisterDefinition adds an individual register to a group
 func (a *App) AddRegisterDefinition(deviceID string, groupID string, register uint16, count uint16, dataType string) error {
 	return a.Engine.AddRegisterDefinition(deviceID, groupID, register, count, dataType)
+}
+
+// GetDeviceConfig returns the full device configuration (groups and definitions)
+func (a *App) GetDeviceConfig(deviceID string) (*engine.Device, error) {
+	return a.Engine.GetDeviceConfig(deviceID)
 }
 
 // StartPolling begins the background polling loop

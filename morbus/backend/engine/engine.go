@@ -83,6 +83,14 @@ func (e *Engine) AddDevice(id string, connID string, slaveID uint8) error {
 	return nil
 }
 
+func (e *Engine) GetDeviceConfig(deviceID string) (*Device, error) {
+	dev, ok := e.devices[deviceID]
+	if !ok {
+		return nil, fmt.Errorf("device %s not found", deviceID)
+	}
+	return dev, nil
+}
+
 func (e *Engine) AddRegisterGroup(deviceID string, groupID string, table modbus.RegType) error {
 	dev, ok := e.devices[deviceID]
 	if !ok {

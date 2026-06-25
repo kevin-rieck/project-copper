@@ -1,21 +1,82 @@
 import React, { useState } from 'react';
 import { decodeModbusBuffer, ByteOrder } from './utils/decoder';
 
+import { GetDeviceConfig, AddRegisterGroup, AddRegisterDefinition } from '../wailsjs/go/main/App';
+import { engine } from '../wailsjs/go/models';
+
 interface RegisterBrowserProps {
     data: Record<string, any>;
+    deviceID?: string;
 }
 
-export const RegisterBrowser: React.FC<RegisterBrowserProps> = ({ data }) => {
-    // Temporary hardcoded definitions until we fetch them from the backend config
-    const definitions = [
-        { register: 0, name: "Drive Speed Cmd", type: "UInt16" },
-        { register: 1, name: "Drive Current Phase A", type: "Float32" },
-    ];
-
+export const RegisterBrowser: React.FC<RegisterBrowserProps> = ({ data, deviceID = "dev1" }) => {
+    const [deviceConfig, setDeviceConfig] = useState<engine.Device | null>(null);
+    const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
     const [selectedReg, setSelectedReg] = useState<number | null>(null);
     const [byteOrders, setByteOrders] = useState<Record<number, ByteOrder>>({});
 
-    const selectedDef = selectedReg !== null ? definitions.find(d => d.register === selectedReg) : null;
+    const [showAddGroup, setShowAddGroup] = useState(false);
+    const [newGroupName, setNewGroupName] = useState('');
+
+    const [showAddDef, setShowAddDef] = useState(false);
+    const [newDefAddress, setNewDefAddress] = useState('');
+    const [newDefType, setNewDefType] = useState('uint16');
+
+    const loadConfig = async () => {
+        try {
+            const config = await GetDeviceConfig(deviceID);
+            setDeviceConfig(config as any);
+            if (config && config.groups) {
+                const groupIds = Object.keys(config.groups);
+                if (groupIds.length > 0 && !selectedGroupId) {
+                    setSelectedGroupId(groupIds[0]);
+                }
+            }
+        } catch (err) {
+            console.error("Failed to load device config:", err);
+        }
+    };
+
+    React.useEffect(() => {
+        loadConfig();
+    }, [deviceID]);
+
+    const handleAddGroup = async () => {
+        if (!newGroupName) return;
+        await AddRegisterGroup(deviceID, newGroupName, 3);
+        setShowAddGroup(false);
+        setNewGroupName('');
+        await loadConfig();
+    };
+
+    const handleAddDef = async () => {
+        if (!newDefAddress || !selectedGroupId) return;
+        const addr = parseInt(newDefAddress, 10);
+        const count = newDefType === 'float32' ? 2 : 1;
+        await AddRegisterDefinition(deviceID, selectedGroupId, addr, count, newDefType);
+        setShowAddDef(false);
+        setNewDefAddress('');
+        await loadConfig();
+    };
+
+    // Active definitions to render
+    let definitions: any[] = [];
+    let groupName = "Unknown";
+    
+    if (deviceConfig && selectedGroupId && deviceConfig.groups[selectedGroupId]) {
+        const group = deviceConfig.groups[selectedGroupId];
+        definitions = group.definitions || [];
+        groupName = group.id;
+    }
+
+    // Add UI mock names to definitions since our backend currently doesn't store 'name'
+    const displayDefinitions = definitions.map(d => ({
+        register: d.register,
+        type: d.data_type === 'uint16' ? 'UInt16' : (d.data_type === 'float32' ? 'Float32' : d.data_type),
+        name: `Register ${d.register}` // placeholder until we add 'name' to the DB/config
+    }));
+
+    const selectedDef = selectedReg !== null ? displayDefinitions.find(d => d.register === selectedReg) : null;
     const selectedData = selectedReg !== null ? data[selectedReg] : null;
     const selectedByteOrder = selectedReg !== null ? (byteOrders[selectedReg] || 'ABCD') : 'ABCD';
 
@@ -34,13 +95,43 @@ export const RegisterBrowser: React.FC<RegisterBrowserProps> = ({ data }) => {
                                 <span className="text-sm font-semibold">Holding Registers (4x)</span>
                             </div>
                             <ul className="pl-6 mt-1 space-y-1 border-l border-outline-variant ml-3">
-                                <li className="flex items-center gap-2 px-2 py-1 bg-surface-container hover:bg-surface-container-highest rounded cursor-pointer text-on-surface">
-                                    <span className="material-symbols-outlined text-[16px] text-secondary">memory</span>
-                                    <span className="text-sm font-medium">Drive Controllers</span>
-                                </li>
+                                {deviceConfig && Object.values(deviceConfig.groups).map((group: any) => (
+                                    <li 
+                                        key={group.id}
+                                        onClick={() => setSelectedGroupId(group.id)}
+                                        className={`flex items-center gap-2 px-2 py-1 bg-surface-container hover:bg-surface-container-highest rounded cursor-pointer ${selectedGroupId === group.id ? 'text-primary' : 'text-on-surface'}`}
+                                    >
+                                        <span className="material-symbols-outlined text-[16px] text-secondary">memory</span>
+                                        <span className="text-sm font-medium">{group.id}</span>
+                                    </li>
+                                ))}
                             </ul>
                         </li>
                     </ul>
+
+                    {showAddGroup ? (
+                        <div className="mt-4 p-3 bg-surface-container-highest rounded border border-outline-variant shadow-sm">
+                            <input 
+                                type="text" 
+                                placeholder="Group Name (e.g. settings)" 
+                                value={newGroupName}
+                                onChange={(e) => setNewGroupName(e.target.value)}
+                                className="w-full bg-background border border-outline-variant rounded px-2 py-1 text-sm text-on-surface outline-none focus:border-primary mb-2"
+                            />
+                            <div className="flex gap-2">
+                                <button onClick={handleAddGroup} className="flex-1 bg-primary text-on-primary text-[11px] font-bold py-1 rounded">Save Group</button>
+                                <button onClick={() => setShowAddGroup(false)} className="flex-1 border border-outline-variant text-on-surface-variant text-[11px] py-1 rounded">Cancel</button>
+                            </div>
+                        </div>
+                    ) : (
+                        <button 
+                            onClick={() => setShowAddGroup(true)}
+                            className="mt-4 w-full flex items-center justify-center gap-1 py-1.5 border border-dashed border-outline-variant rounded text-on-surface-variant hover:text-primary hover:border-primary transition-colors text-sm"
+                        >
+                            <span className="material-symbols-outlined text-[16px]">add</span>
+                            <span>Add Group</span>
+                        </button>
+                    )}
                 </div>
             </aside>
 
@@ -48,7 +139,40 @@ export const RegisterBrowser: React.FC<RegisterBrowserProps> = ({ data }) => {
             <section className="flex-1 flex flex-col h-full overflow-hidden bg-background">
                 <div className="h-12 border-b border-outline-variant bg-surface flex items-center justify-between px-4 shrink-0">
                     <div className="flex items-center gap-3">
-                        <span className="text-label-caps font-label-caps text-on-surface">Holding Registers: Drive Controllers</span>
+                        <span className="text-label-caps font-label-caps text-on-surface">Holding Registers: {groupName}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {showAddDef ? (
+                            <div className="flex items-center gap-2">
+                                <input 
+                                    type="number" 
+                                    placeholder="Address (e.g. 0)" 
+                                    value={newDefAddress}
+                                    onChange={(e) => setNewDefAddress(e.target.value)}
+                                    className="w-32 bg-background border border-outline-variant rounded px-2 py-1 text-sm text-on-surface outline-none focus:border-primary"
+                                />
+                                <select 
+                                    aria-label="Data Type"
+                                    value={newDefType}
+                                    onChange={(e) => setNewDefType(e.target.value)}
+                                    className="bg-background border border-outline-variant rounded px-2 py-1 text-sm text-on-surface outline-none focus:border-primary"
+                                >
+                                    <option value="uint16">UInt16</option>
+                                    <option value="float32">Float32</option>
+                                </select>
+                                <button onClick={handleAddDef} className="bg-primary text-on-primary text-xs font-bold px-3 py-1.5 rounded">Save Register</button>
+                                <button onClick={() => setShowAddDef(false)} className="border border-outline-variant text-on-surface-variant text-xs px-2 py-1.5 rounded">Cancel</button>
+                            </div>
+                        ) : (
+                            <button 
+                                onClick={() => setShowAddDef(true)}
+                                disabled={!selectedGroupId}
+                                className="flex items-center gap-1 bg-primary text-on-primary hover:brightness-110 transition-all text-xs font-bold px-3 py-1.5 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <span className="material-symbols-outlined text-[16px]">add</span>
+                                Add Register
+                            </button>
+                        )}
                     </div>
                 </div>
                 <div className="flex-1 overflow-auto">
@@ -63,7 +187,7 @@ export const RegisterBrowser: React.FC<RegisterBrowserProps> = ({ data }) => {
                             </tr>
                         </thead>
                         <tbody className="text-sm font-data-mono">
-                            {definitions.map((def) => {
+                            {displayDefinitions.map((def) => {
                                 const pollResult = data[def.register];
                                 const bo = byteOrders[def.register] || 'ABCD';
                                 const decodedVal = pollResult?.raw ? decodeModbusBuffer(pollResult.raw, def.type, bo) : undefined;

@@ -1,28 +1,50 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RegisterBrowser } from './RegisterBrowser';
+import * as AppBindings from '../wailsjs/go/main/App';
+
+vi.mock('../wailsjs/go/main/App', () => ({
+    GetDeviceConfig: vi.fn(),
+    AddRegisterGroup: vi.fn(),
+    AddRegisterDefinition: vi.fn()
+}));
 
 describe('RegisterBrowser Component', () => {
-    it('renders the core layout panes (Register Map, Data Table, Data Lab)', () => {
-        render(<RegisterBrowser data={{}} />);
-        
-        // Left Pane: Register Map
+    beforeEach(() => {
+        vi.resetAllMocks();
+        // Setup default mock response
+        (AppBindings.GetDeviceConfig as any).mockResolvedValue({
+            id: "dev1",
+            groups: {
+                "group1": {
+                    id: "group1",
+                    modbus_table: 3,
+                    definitions: [
+                        { register: 0, count: 1, data_type: "UInt16" },
+                        { register: 1, count: 2, data_type: "Float32" }
+                    ]
+                }
+            }
+        });
+    });
+    it('renders the structure without data', async () => {
+        render(<RegisterBrowser data={{}} deviceID="dev1" />);
         expect(screen.getByText(/Register Map/i)).toBeInTheDocument();
-        
-        // Middle Pane: Data Table (check for specific column headers)
-        expect(screen.getByText('Address')).toBeInTheDocument();
-        expect(screen.getByText('Raw (Hex)')).toBeInTheDocument();
-        
-        // Right Pane: Data Lab
         expect(screen.getByText(/Data Lab/i)).toBeInTheDocument();
+        
+        await waitFor(() => {
+            expect(AppBindings.GetDeviceConfig).toHaveBeenCalledWith('dev1');
+        });
     });
 
     it('displays live data values passed from the engine', async () => {
-        render(<RegisterBrowser data={{ 1: { value: 1234, raw: [17562, 16384] } }} />);
+        render(<RegisterBrowser data={{ 1: { value: 1234, raw: [17562, 16384] } }} deviceID="dev1" />);
         
-        // It should display 1234 in the table
-        expect(screen.getByText('1234')).toBeInTheDocument();
+        // Wait for config to load
+        await waitFor(() => {
+            expect(screen.getByText('1234')).toBeInTheDocument();
+        });
         // It should display the raw hex in the table
         expect(screen.getByText('0x449A 0x4000')).toBeInTheDocument();
 
@@ -39,5 +61,43 @@ describe('RegisterBrowser Component', () => {
 
         // The value should decode to ~2.004...
         expect(screen.getAllByText(/2\.004/).length).toBeGreaterThan(0);
+    });
+
+    it('allows adding a new register group', async () => {
+        render(<RegisterBrowser data={{}} deviceID="dev1" />);
+        await waitFor(() => expect(AppBindings.GetDeviceConfig).toHaveBeenCalledWith('dev1'));
+
+        // Click Add Group button
+        const addGroupBtn = screen.getByRole('button', { name: /Add Group/i });
+        await userEvent.click(addGroupBtn);
+
+        // Fill form
+        await userEvent.type(screen.getByPlaceholderText('Group Name (e.g. settings)'), 'settings');
+        // Submit
+        await userEvent.click(screen.getByRole('button', { name: /Save Group/i }));
+
+        expect(AppBindings.AddRegisterGroup).toHaveBeenCalledWith('dev1', 'settings', 3);
+        // It should reload config
+        expect(AppBindings.GetDeviceConfig).toHaveBeenCalledTimes(2);
+    });
+
+    it('allows adding a new register definition to a group', async () => {
+        render(<RegisterBrowser data={{}} deviceID="dev1" />);
+        await waitFor(() => expect(AppBindings.GetDeviceConfig).toHaveBeenCalledWith('dev1'));
+
+        // Click Add Register button
+        const addRegBtn = screen.getByRole('button', { name: /Add Register/i });
+        await userEvent.click(addRegBtn);
+
+        // Fill form
+        await userEvent.type(screen.getByPlaceholderText('Address (e.g. 0)'), '2');
+        await userEvent.selectOptions(screen.getByRole('combobox', { name: /Data Type/i }), 'uint16');
+        
+        // Submit
+        await userEvent.click(screen.getByRole('button', { name: /Save Register/i }));
+
+        // count=1 for uint16
+        expect(AppBindings.AddRegisterDefinition).toHaveBeenCalledWith('dev1', 'group1', 2, 1, 'uint16');
+        expect(AppBindings.GetDeviceConfig).toHaveBeenCalledTimes(2);
     });
 });

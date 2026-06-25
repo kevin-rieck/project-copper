@@ -18,6 +18,10 @@ export function AddRegisterGroup(arg1, arg2, arg3) {
   return window['go']['main']['App']['AddRegisterGroup'](arg1, arg2, arg3);
 }
 
+export function GetDeviceConfig(arg1) {
+  return window['go']['main']['App']['GetDeviceConfig'](arg1);
+}
+
 export function StartPolling() {
   return window['go']['main']['App']['StartPolling']();
 }
