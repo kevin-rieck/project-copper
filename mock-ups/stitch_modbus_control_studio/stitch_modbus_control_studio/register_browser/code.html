@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Morbus - Register Browser</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-on-surface": "#302f39",
+                        "on-secondary-fixed": "#0b1c30",
+                        "on-tertiary": "#571f00",
+                        "tertiary": "#ffb695",
+                        "surface-container-lowest": "#0e0d16",
+                        "background": "#13121b",
+                        "on-primary-fixed-variant": "#3323cc",
+                        "secondary": "#b7c8e1",
+                        "surface-container-highest": "#35343e",
+                        "on-surface-variant": "#c7c4d8",
+                        "on-secondary": "#213145",
+                        "surface-container-low": "#1b1b24",
+                        "outline-variant": "#464555",
+                        "secondary-fixed": "#d3e4fe",
+                        "on-tertiary-fixed": "#351000",
+                        "on-error": "#690005",
+                        "on-tertiary-container": "#ffd2be",
+                        "on-tertiary-fixed-variant": "#7b2f00",
+                        "error-container": "#93000a",
+                        "on-background": "#e4e1ee",
+                        "surface-container": "#1f1f28",
+                        "surface-tint": "#c3c0ff",
+                        "primary-container": "#4f46e5",
+                        "on-secondary-container": "#a9bad3",
+                        "tertiary-fixed": "#ffdbcc",
+                        "on-error-container": "#ffdad6",
+                        "surface-variant": "#35343e",
+                        "tertiary-fixed-dim": "#ffb695",
+                        "secondary-fixed-dim": "#b7c8e1",
+                        "inverse-surface": "#e4e1ee",
+                        "surface-dim": "#13121b",
+                        "inverse-primary": "#4d44e3",
+                        "primary-fixed-dim": "#c3c0ff",
+                        "outline": "#918fa1",
+                        "primary-fixed": "#e2dfff",
+                        "on-primary": "#1d00a5",
+                        "primary": "#c3c0ff",
+                        "error": "#ffb4ab",
+                        "tertiary-container": "#a44100",
+                        "on-primary-container": "#dad7ff",
+                        "on-surface": "#e4e1ee",
+                        "secondary-container": "#3a4a5f",
+                        "on-secondary-fixed-variant": "#38485d",
+                        "surface-bright": "#393842",
+                        "surface-container-high": "#2a2933",
+                        "surface": "#13121b",
+                        "on-primary-fixed": "#0f0069"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "sidebar-width": "240px",
+                        "container-padding": "16px",
+                        "gutter": "12px",
+                        "unit": "4px",
+                        "compact-gap": "4px",
+                        "standard-gap": "8px"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "data-mono": ["JetBrains Mono"],
+                        "headline-md": ["Inter"],
+                        "display-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["11px", { "lineHeight": "12px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "data-mono": ["13px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Custom Scrollbar for dark theme */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: theme('colors.surface-container-lowest'); 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: theme('colors.outline-variant'); 
+            border-radius: theme('borderRadius.full');
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: theme('colors.outline'); 
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-sm text-body-sm h-screen overflow-hidden flex">
+<!-- SideNavBar -->
+<nav class="fixed left-0 top-0 h-full w-[240px] flex flex-col z-50 bg-background dark:bg-background border-r border-outline-variant dark:border-outline-variant">
+<!-- Header -->
+<div class="p-container-padding border-b border-outline-variant dark:border-outline-variant flex items-center gap-standard-gap">
+<div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-primary-container" style="font-variation-settings: 'FILL' 1;">router</span>
+</div>
+<div>
+<h1 class="text-headline-md font-headline-md font-bold text-primary dark:text-primary">Morbus Utility</h1>
+<p class="text-label-caps font-label-caps text-on-surface-variant">Modbus TCP/RTU</p>
+</div>
+</div>
+<!-- Main Nav -->
+<div class="flex-1 overflow-y-auto py-container-padding flex flex-col gap-unit">
+<a class="flex items-center gap-standard-gap text-on-surface-variant dark:text-on-surface-variant hover:text-on-surface px-4 py-2 hover:bg-surface-container-highest dark:hover:bg-surface-container-highest transition-colors duration-150" href="#">
+<span class="material-symbols-outlined">settings_remote</span>
+<span>Device Manager</span>
+</a>
+<a class="flex items-center gap-standard-gap text-primary dark:text-primary border-r-2 border-primary bg-surface-container-high px-4 py-2 opacity-80 scale-[0.99] transition-all" href="#">
+<span class="material-symbols-outlined">table_chart</span>
+<span>Register Browser</span>
+</a>
+<a class="flex items-center gap-standard-gap text-on-surface-variant dark:text-on-surface-variant hover:text-on-surface px-4 py-2 hover:bg-surface-container-highest dark:hover:bg-surface-container-highest transition-colors duration-150" href="#">
+<span class="material-symbols-outlined">visibility</span>
+<span>Watch List</span>
+</a>
+<a class="flex items-center gap-standard-gap text-on-surface-variant dark:text-on-surface-variant hover:text-on-surface px-4 py-2 hover:bg-surface-container-highest dark:hover:bg-surface-container-highest transition-colors duration-150" href="#">
+<span class="material-symbols-outlined">terminal</span>
+<span>Traffic Inspector</span>
+</a>
+</div>
+<!-- CTA -->
+<div class="p-container-padding border-t border-outline-variant dark:border-outline-variant">
+<button class="w-full bg-primary text-on-primary font-bold py-2 px-4 rounded hover:brightness-110 transition-all flex items-center justify-center gap-standard-gap">
+<span class="material-symbols-outlined text-sm">wifi_find</span>
+                Scan Network
+            </button>
+</div>
+<!-- Footer Nav -->
+<div class="p-container-padding flex flex-col gap-unit border-t border-outline-variant dark:border-outline-variant bg-surface-container-lowest">
+<a class="flex items-center gap-standard-gap text-on-surface-variant dark:text-on-surface-variant hover:text-on-surface px-4 py-2 hover:bg-surface-container-highest dark:hover:bg-surface-container-highest transition-colors duration-150 text-sm" href="#">
+<span class="material-symbols-outlined text-[18px]">settings</span>
+<span>Settings</span>
+</a>
+<a class="flex items-center gap-standard-gap text-on-surface-variant dark:text-on-surface-variant hover:text-on-surface px-4 py-2 hover:bg-surface-container-highest dark:hover:bg-surface-container-highest transition-colors duration-150 text-sm" href="#">
+<span class="material-symbols-outlined text-[18px]">help</span>
+<span>Support</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col ml-[240px] w-[calc(100%-240px)] h-screen">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center w-full px-container-padding h-14 bg-surface-container dark:bg-surface-container border-b border-outline-variant dark:border-outline-variant shrink-0 sticky top-0 z-40">
+<!-- Left: Search (simulated based on 'search_bar: on_left') -->
+<div class="flex-1 max-w-md">
+<div class="relative flex items-center w-full h-8 rounded border border-outline-variant bg-surface-dim focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
+<span class="material-symbols-outlined absolute left-2 text-on-surface-variant text-sm">search</span>
+<input class="w-full h-full bg-transparent border-none focus:ring-0 text-body-sm font-body-sm pl-8 pr-3 text-on-surface placeholder-on-surface-variant" placeholder="Search registers, addresses..." type="text"/>
+</div>
+</div>
+<!-- Right: Actions -->
+<div class="flex items-center gap-standard-gap">
+<button class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-container-highest rounded-lg">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center text-primary transition-colors hover:bg-surface-container-highest rounded-lg relative">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">wifi</span>
+<span class="absolute top-1 right-1 w-2 h-2 bg-green-500 rounded-full shadow-[0_0_4px_rgba(34,197,94,0.8)]"></span>
+</button>
+<div class="h-6 w-px bg-outline-variant mx-1"></div>
+<button class="px-3 py-1 border border-outline-variant text-on-surface hover:bg-surface-container-highest transition-colors rounded text-sm font-semibold">
+                    Export
+                </button>
+<button class="px-3 py-1 bg-primary text-on-primary hover:brightness-110 transition-all rounded text-sm font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">cable</span>
+                    Connect
+                </button>
+<div class="ml-2 w-8 h-8 rounded bg-surface-container-highest border border-outline-variant flex items-center justify-center overflow-hidden shrink-0">
+<img alt="Operator Profile" class="w-full h-full object-cover" data-alt="A macro photography shot of an industrial control panel dial with soft glowing blue LED lights, conveying a highly technical, precise, and professional engineering environment in a dark mode setting. The mood is focused and serious." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBQDJIP-mbbIZmRaEy7KER8cj_m-SLKVpzeQzig6jjRnaiWoqd3wveTWvI237ROCw71wmU7EB_xMxQUv_nM3eyOP0k70Lu1OY-NoGj_Yf9eQsV6ImCZnljrnkhWzbHdXd73uditsifUFL9V4BmV_gpQtgBtBu0aJtLab8DnP99sHEv1amsTqe3C3VuS4wConMrqLtdTgc52tFRBodQYBv4Z5Wlwe6qKretLWYuA0hZ0GfVR2O5wTthj-1EpXe6bLRE4LHGop-6pcTY"/>
+</div>
+</div>
+</header>
+<!-- Workspace Layout: Split Pane -->
+<main class="flex-1 flex overflow-hidden bg-background">
+<!-- Left Pane: Register Map Explorer -->
+<aside class="w-[260px] flex-shrink-0 border-r border-outline-variant bg-surface-container-lowest flex flex-col h-full">
+<div class="px-4 py-3 border-b border-outline-variant bg-surface-container">
+<h2 class="text-label-caps font-label-caps text-on-surface-variant uppercase">Register Map</h2>
+</div>
+<div class="flex-1 overflow-y-auto p-2">
+<ul class="space-y-1">
+<!-- Node 1 -->
+<li>
+<div class="flex items-center gap-2 px-2 py-1.5 hover:bg-surface-container-highest rounded cursor-pointer text-on-surface">
+<span class="material-symbols-outlined text-[18px] text-primary">folder_open</span>
+<span class="text-sm font-semibold">Input Registers (3x)</span>
+</div>
+<ul class="pl-6 mt-1 space-y-1">
+<li class="flex items-center gap-2 px-2 py-1 hover:bg-surface-container-highest rounded cursor-pointer text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px]">data_object</span>
+<span class="text-sm">Sensor Array Alpha</span>
+</li>
+<li class="flex items-center gap-2 px-2 py-1 hover:bg-surface-container-highest rounded cursor-pointer text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px]">data_object</span>
+<span class="text-sm">Temperature Probes</span>
+</li>
+</ul>
+</li>
+<!-- Node 2 (Active) -->
+<li class="mt-2">
+<div class="flex items-center gap-2 px-2 py-1.5 bg-surface-container-high border-l-2 border-primary rounded-r cursor-pointer text-primary">
+<span class="material-symbols-outlined text-[18px]">folder_open</span>
+<span class="text-sm font-semibold">Holding Registers (4x)</span>
+</div>
+<ul class="pl-6 mt-1 space-y-1 border-l border-outline-variant ml-3">
+<li class="flex items-center gap-2 px-2 py-1 bg-surface-container hover:bg-surface-container-highest rounded cursor-pointer text-on-surface">
+<span class="material-symbols-outlined text-[16px] text-secondary">memory</span>
+<span class="text-sm font-medium">Drive Controllers</span>
+</li>
+<li class="flex items-center gap-2 px-2 py-1 hover:bg-surface-container-highest rounded cursor-pointer text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px]">memory</span>
+<span class="text-sm">Valve Actuators</span>
+</li>
+<li class="flex items-center gap-2 px-2 py-1 hover:bg-surface-container-highest rounded cursor-pointer text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px]">memory</span>
+<span class="text-sm">PID Settings</span>
+</li>
+</ul>
+</li>
+<!-- Node 3 -->
+<li class="mt-2">
+<div class="flex items-center gap-2 px-2 py-1.5 hover:bg-surface-container-highest rounded cursor-pointer text-on-surface">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">folder</span>
+<span class="text-sm font-semibold">Coils (0x)</span>
+</div>
+</li>
+<!-- Node 4 -->
+<li class="mt-1">
+<div class="flex items-center gap-2 px-2 py-1.5 hover:bg-surface-container-highest rounded cursor-pointer text-on-surface">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">folder</span>
+<span class="text-sm font-semibold">Discrete Inputs (1x)</span>
+</div>
+</li>
+</ul>
+</div>
+</aside>
+<!-- Middle Pane: Data Table -->
+<section class="flex-1 flex flex-col h-full overflow-hidden bg-background">
+<!-- Toolbar -->
+<div class="h-12 border-b border-outline-variant bg-surface flex items-center justify-between px-4 shrink-0">
+<div class="flex items-center gap-3">
+<span class="text-label-caps font-label-caps text-on-surface">Holding Registers: Drive Controllers</span>
+<div class="px-2 py-0.5 bg-surface-container-highest border border-outline-variant rounded text-data-mono font-data-mono text-[11px] text-on-surface-variant">
+                            40001 - 40050
+                        </div>
+</div>
+<div class="flex items-center gap-2">
+<button class="w-7 h-7 flex items-center justify-center rounded hover:bg-surface-container-highest text-on-surface-variant" title="Refresh">
+<span class="material-symbols-outlined text-[18px]">refresh</span>
+</button>
+<button class="w-7 h-7 flex items-center justify-center rounded hover:bg-surface-container-highest text-on-surface-variant" title="Filter">
+<span class="material-symbols-outlined text-[18px]">filter_list</span>
+</button>
+<div class="h-4 w-px bg-outline-variant"></div>
+<select class="bg-surface-container border border-outline-variant text-on-surface text-sm rounded px-2 py-1 focus:ring-primary focus:border-primary h-7 leading-none">
+<option>Decimal</option>
+<option>Hex</option>
+<option>Binary</option>
+</select>
+</div>
+</div>
+<!-- Table Container -->
+<div class="flex-1 overflow-auto">
+<table class="w-full text-left border-collapse whitespace-nowrap">
+<thead class="sticky top-0 bg-surface-container z-10 border-b border-outline-variant shadow-sm text-label-caps font-label-caps text-on-surface-variant uppercase">
+<tr>
+<th class="px-4 py-2 font-normal">Address</th>
+<th class="px-4 py-2 font-normal">Name</th>
+<th class="px-4 py-2 font-normal">Raw (Hex)</th>
+<th class="px-4 py-2 font-normal">Value</th>
+<th class="px-4 py-2 font-normal">Type</th>
+<th class="px-4 py-2 font-normal text-right">Last Update</th>
+</tr>
+</thead>
+<tbody class="text-sm font-data-mono font-data-mono">
+<!-- Row 1 -->
+<tr class="border-b border-outline-variant hover:bg-surface-container-lowest transition-colors cursor-pointer">
+<td class="px-4 py-2.5 text-secondary">40001</td>
+<td class="px-4 py-2.5 font-body-sm text-on-surface">Drive Speed Cmd</td>
+<td class="px-4 py-2.5 text-on-surface-variant">0x05DC</td>
+<td class="px-4 py-2.5 font-bold text-primary">1500</td>
+<td class="px-4 py-2.5"><span class="px-1.5 py-0.5 rounded bg-surface-container-highest text-on-surface-variant text-[11px] border border-outline-variant">UInt16</span></td>
+<td class="px-4 py-2.5 text-right text-on-surface-variant text-xs">10:42:01.050</td>
+</tr>
+<!-- Row 2 (Active/Selected) -->
+<tr class="border-b border-primary bg-primary/10 cursor-pointer relative after:absolute after:inset-0 after:border after:border-primary after:pointer-events-none">
+<td class="px-4 py-2.5 text-primary font-bold">40002</td>
+<td class="px-4 py-2.5 font-body-sm text-on-surface font-semibold">Drive Current Phase A</td>
+<td class="px-4 py-2.5 text-on-surface">0x447A</td>
+<td class="px-4 py-2.5 font-bold text-tertiary">1000.0</td>
+<td class="px-4 py-2.5"><span class="px-1.5 py-0.5 rounded bg-surface-container-highest text-on-surface-variant text-[11px] border border-outline-variant">Float32</span></td>
+<td class="px-4 py-2.5 text-right text-on-surface-variant text-xs">10:42:01.050</td>
+</tr>
+<!-- Row 3 -->
+<tr class="border-b border-outline-variant hover:bg-surface-container-lowest transition-colors cursor-pointer">
+<td class="px-4 py-2.5 text-secondary">40004</td>
+<td class="px-4 py-2.5 font-body-sm text-on-surface">Drive Status Word</td>
+<td class="px-4 py-2.5 text-on-surface-variant">0x0083</td>
+<td class="px-4 py-2.5">131</td>
+<td class="px-4 py-2.5"><span class="px-1.5 py-0.5 rounded bg-surface-container-highest text-on-surface-variant text-[11px] border border-outline-variant">Bitfield</span></td>
+<td class="px-4 py-2.5 text-right text-on-surface-variant text-xs">10:42:01.050</td>
+</tr>
+<!-- Row 4 -->
+<tr class="border-b border-outline-variant bg-surface-container-lowest/50 hover:bg-surface-container-lowest transition-colors cursor-pointer">
+<td class="px-4 py-2.5 text-secondary">40005</td>
+<td class="px-4 py-2.5 font-body-sm text-on-surface">Fault Code</td>
+<td class="px-4 py-2.5 text-on-surface-variant">0x0000</td>
+<td class="px-4 py-2.5 text-on-surface-variant">0</td>
+<td class="px-4 py-2.5"><span class="px-1.5 py-0.5 rounded bg-surface-container-highest text-on-surface-variant text-[11px] border border-outline-variant">Int16</span></td>
+<td class="px-4 py-2.5 text-right text-on-surface-variant text-xs">10:42:01.050</td>
+</tr>
+<!-- Row 5 -->
+<tr class="border-b border-outline-variant hover:bg-surface-container-lowest transition-colors cursor-pointer">
+<td class="px-4 py-2.5 text-secondary">40006</td>
+<td class="px-4 py-2.5 font-body-sm text-on-surface flex items-center gap-2">
+                                    Drive Temp
+                                    <span class="w-2 h-2 rounded-full bg-error shadow-[0_0_4px_rgba(255,180,171,0.8)]" title="High Alarm"></span>
+</td>
+<td class="px-4 py-2.5 text-error">0x0055</td>
+<td class="px-4 py-2.5 text-error font-bold">85</td>
+<td class="px-4 py-2.5"><span class="px-1.5 py-0.5 rounded bg-surface-container-highest text-on-surface-variant text-[11px] border border-outline-variant">Int16</span></td>
+<td class="px-4 py-2.5 text-right text-on-surface-variant text-xs">10:42:01.050</td>
+</tr>
+<!-- Row 6 -->
+<tr class="border-b border-outline-variant bg-surface-container-lowest/50 hover:bg-surface-container-lowest transition-colors cursor-pointer opacity-50">
+<td class="px-4 py-2.5 text-secondary">40007</td>
+<td class="px-4 py-2.5 font-body-sm text-on-surface">Reserved</td>
+<td class="px-4 py-2.5 text-on-surface-variant">0x0000</td>
+<td class="px-4 py-2.5 text-on-surface-variant">0</td>
+<td class="px-4 py-2.5"><span class="px-1.5 py-0.5 rounded bg-surface-container-highest text-on-surface-variant text-[11px] border border-outline-variant">UInt16</span></td>
+<td class="px-4 py-2.5 text-right text-on-surface-variant text-xs">-</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<!-- Right Pane: Data Lab Inspector -->
+<aside class="w-[320px] flex-shrink-0 border-l border-outline-variant bg-surface-container flex flex-col h-full overflow-y-auto">
+<!-- Inspector Header -->
+<div class="px-4 py-3 border-b border-outline-variant bg-surface-container sticky top-0 z-10 flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]">science</span>
+<h2 class="text-label-caps font-label-caps text-on-surface uppercase">Data Lab</h2>
+</div>
+<button class="text-on-surface-variant hover:text-on-surface">
+<span class="material-symbols-outlined text-[18px]">close_fullscreen</span>
+</button>
+</div>
+<div class="p-4 space-y-6">
+<!-- Selected Register Context -->
+<div>
+<div class="flex justify-between items-end mb-1">
+<span class="text-xs text-on-surface-variant font-data-mono">40002</span>
+<span class="text-[10px] uppercase text-outline px-1 border border-outline rounded">Read/Write</span>
+</div>
+<h3 class="text-base font-semibold text-on-surface leading-tight">Drive Current Phase A</h3>
+<div class="mt-2 flex gap-2">
+<span class="px-2 py-0.5 rounded-full bg-surface-container-highest text-on-surface-variant text-[11px] border border-outline-variant">Holding</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-highest text-on-surface-variant text-[11px] border border-outline-variant">Length: 2</span>
+</div>
+</div>
+<!-- Raw Data -->
+<div class="bg-background rounded border border-outline-variant p-3 shadow-inner">
+<div class="text-label-caps font-label-caps text-on-surface-variant mb-2">RAW HEX BUFFER</div>
+<div class="font-data-mono text-lg text-primary tracking-widest break-all">
+                            0x447A 0x0000
+                        </div>
+<div class="flex justify-between items-center mt-3 pt-3 border-t border-outline-variant/50">
+<span class="text-xs text-on-surface-variant">Byte Order:</span>
+<select class="bg-surface-container border border-outline-variant text-on-surface text-xs rounded px-1 py-0.5 focus:ring-primary focus:border-primary">
+<option>Big Endian (ABCD)</option>
+<option>Little Endian (DCBA)</option>
+<option>Byte Swap (BADC)</option>
+<option>Word Swap (CDAB)</option>
+</select>
+</div>
+</div>
+<!-- Decoders -->
+<div>
+<h4 class="text-label-caps font-label-caps text-on-surface-variant mb-3 border-b border-outline-variant pb-1">DECODED VALUES</h4>
+<div class="space-y-2">
+<!-- Decoder Item: Float32 (Active) -->
+<div class="flex items-center justify-between p-2 rounded bg-surface-container-high border border-primary relative overflow-hidden group">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
+<span class="text-sm text-on-surface pl-2 font-medium">Float32</span>
+<span class="font-data-mono text-tertiary font-bold group-hover:bg-tertiary/10 px-1 rounded transition-colors cursor-text selection:bg-primary selection:text-white">1000.0</span>
+</div>
+<!-- Decoder Item: Int16 -->
+<div class="flex items-center justify-between p-2 rounded bg-background border border-outline-variant hover:border-outline transition-colors group">
+<span class="text-sm text-on-surface-variant pl-1">Int16 (Word 1)</span>
+<span class="font-data-mono text-on-surface group-hover:bg-surface-container-highest px-1 rounded transition-colors">17530</span>
+</div>
+<!-- Decoder Item: UInt16 -->
+<div class="flex items-center justify-between p-2 rounded bg-background border border-outline-variant hover:border-outline transition-colors group">
+<span class="text-sm text-on-surface-variant pl-1">UInt16 (Word 1)</span>
+<span class="font-data-mono text-on-surface group-hover:bg-surface-container-highest px-1 rounded transition-colors">17530</span>
+</div>
+<!-- Decoder Item: Int32 -->
+<div class="flex items-center justify-between p-2 rounded bg-background border border-outline-variant hover:border-outline transition-colors group">
+<span class="text-sm text-on-surface-variant pl-1">Int32</span>
+<span class="font-data-mono text-on-surface group-hover:bg-surface-container-highest px-1 rounded transition-colors">1148846080</span>
+</div>
+</div>
+</div>
+<!-- Bitfield Explorer (Collapsed style but showing some bits) -->
+<div>
+<div class="flex items-center justify-between mb-2 border-b border-outline-variant pb-1">
+<h4 class="text-label-caps font-label-caps text-on-surface-variant">BITFIELD (WORD 1)</h4>
+<button class="text-[10px] text-primary hover:underline">Edit</button>
+</div>
+<div class="grid grid-cols-8 gap-1 bg-background p-2 rounded border border-outline-variant">
+<!-- High Byte -->
+<div class="text-center font-data-mono text-[10px] text-on-surface-variant">0</div>
+<div class="text-center font-data-mono text-[10px] text-on-surface-variant">1</div>
+<div class="text-center font-data-mono text-[10px] text-on-surface-variant">0</div>
+<div class="text-center font-data-mono text-[10px] text-on-surface-variant">0</div>
+<div class="text-center font-data-mono text-[10px] text-on-surface-variant">0</div>
+<div class="text-center font-data-mono text-[10px] text-primary font-bold bg-primary/20 rounded">1</div>
+<div class="text-center font-data-mono text-[10px] text-on-surface-variant">0</div>
+<div class="text-center font-data-mono text-[10px] text-on-surface-variant">0</div>
+<!-- Low Byte -->
+<div class="text-center font-data-mono text-[10px] text-on-surface-variant">0</div>
+<div class="text-center font-data-mono text-[10px] text-primary font-bold bg-primary/20 rounded">1</div>
+<div class="text-center font-data-mono text-[10px] text-primary font-bold bg-primary/20 rounded">1</div>
+<div class="text-center font-data-mono text-[10px] text-primary font-bold bg-primary/20 rounded">1</div>
+<div class="text-center font-data-mono text-[10px] text-primary font-bold bg-primary/20 rounded">1</div>
+<div class="text-center font-data-mono text-[10px] text-on-surface-variant">0</div>
+<div class="text-center font-data-mono text-[10px] text-primary font-bold bg-primary/20 rounded">1</div>
+<div class="text-center font-data-mono text-[10px] text-on-surface-variant">0</div>
+</div>
+<div class="flex justify-between px-1 mt-1 text-[9px] text-outline">
+<span>15</span>
+<span>8</span>
+<span>7</span>
+<span>0</span>
+</div>
+</div>
+<!-- Quick Actions -->
+<div class="pt-4 mt-4 border-t border-outline-variant">
+<button class="w-full py-2 bg-surface-container-highest hover:bg-surface-bright text-on-surface border border-outline-variant rounded transition-colors text-sm font-semibold flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]">edit_note</span>
+                            Write Value
+                        </button>
+</div>
+</div>
+</aside>
+</main>
+</div>
+</body></html>

@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Morbus - Device Manager</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "inverse-on-surface": "#302f39",
+                    "on-secondary-fixed": "#0b1c30",
+                    "on-tertiary": "#571f00",
+                    "tertiary": "#ffb695",
+                    "surface-container-lowest": "#0e0d16",
+                    "background": "#13121b",
+                    "on-primary-fixed-variant": "#3323cc",
+                    "secondary": "#b7c8e1",
+                    "surface-container-highest": "#35343e",
+                    "on-surface-variant": "#c7c4d8",
+                    "on-secondary": "#213145",
+                    "surface-container-low": "#1b1b24",
+                    "outline-variant": "#464555",
+                    "secondary-fixed": "#d3e4fe",
+                    "on-tertiary-fixed": "#351000",
+                    "on-error": "#690005",
+                    "on-tertiary-container": "#ffd2be",
+                    "on-tertiary-fixed-variant": "#7b2f00",
+                    "error-container": "#93000a",
+                    "on-background": "#e4e1ee",
+                    "surface-container": "#1f1f28",
+                    "surface-tint": "#c3c0ff",
+                    "primary-container": "#4f46e5",
+                    "on-secondary-container": "#a9bad3",
+                    "tertiary-fixed": "#ffdbcc",
+                    "on-error-container": "#ffdad6",
+                    "surface-variant": "#35343e",
+                    "tertiary-fixed-dim": "#ffb695",
+                    "secondary-fixed-dim": "#b7c8e1",
+                    "inverse-surface": "#e4e1ee",
+                    "surface-dim": "#13121b",
+                    "inverse-primary": "#4d44e3",
+                    "primary-fixed-dim": "#c3c0ff",
+                    "outline": "#918fa1",
+                    "primary-fixed": "#e2dfff",
+                    "on-primary": "#1d00a5",
+                    "primary": "#c3c0ff",
+                    "error": "#ffb4ab",
+                    "tertiary-container": "#a44100",
+                    "on-primary-container": "#dad7ff",
+                    "on-surface": "#e4e1ee",
+                    "secondary-container": "#3a4a5f",
+                    "on-secondary-fixed-variant": "#38485d",
+                    "surface-bright": "#393842",
+                    "surface-container-high": "#2a2933",
+                    "surface": "#13121b",
+                    "on-primary-fixed": "#0f0069"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "sidebar-width": "240px",
+                    "container-padding": "16px",
+                    "gutter": "12px",
+                    "unit": "4px",
+                    "compact-gap": "4px",
+                    "standard-gap": "8px"
+            },
+            "fontFamily": {
+                    "label-caps": [
+                            "Inter"
+                    ],
+                    "body-sm": [
+                            "Inter"
+                    ],
+                    "data-mono": [
+                            "JetBrains Mono"
+                    ],
+                    "headline-md": [
+                            "Inter"
+                    ],
+                    "display-lg": [
+                            "Inter"
+                    ]
+            },
+            "fontSize": {
+                    "label-caps": [
+                            "11px",
+                            {
+                                    "lineHeight": "12px",
+                                    "letterSpacing": "0.05em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "body-sm": [
+                            "14px",
+                            {
+                                    "lineHeight": "20px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "data-mono": [
+                            "13px",
+                            {
+                                    "lineHeight": "16px",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "headline-md": [
+                            "20px",
+                            {
+                                    "lineHeight": "28px",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "display-lg": [
+                            "32px",
+                            {
+                                    "lineHeight": "40px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "700"
+                            }
+                    ]
+            }
+        },
+        },
+      }
+    </script>
+<style>
+        /* Custom styles for glowing status indicator */
+        .status-glow-active {
+            box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+        }
+        .status-glow-inactive {
+            box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-sm antialiased h-screen flex overflow-hidden">
+<!-- SideNavBar -->
+<nav class="fixed left-0 top-0 h-full w-[240px] flex flex-col z-50 bg-background dark:bg-background border-r border-outline-variant dark:border-outline-variant">
+<!-- Header -->
+<div class="p-4 border-b border-outline-variant">
+<h1 class="text-headline-md font-headline-md font-bold text-primary dark:text-primary">Morbus Utility</h1>
+<p class="text-label-caps font-label-caps text-on-surface-variant mt-1">Modbus TCP/RTU</p>
+</div>
+<!-- Main Navigation -->
+<div class="flex-1 overflow-y-auto py-4">
+<ul class="space-y-1">
+<!-- Active Tab -->
+<li>
+<a class="flex items-center gap-standard-gap text-primary dark:text-primary border-r-2 border-primary bg-surface-container-high px-4 py-2 opacity-80 scale-[0.99] transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="settings_remote" style="font-variation-settings: 'FILL' 1;">settings_remote</span>
+<span class="text-label-caps font-label-caps">Device Manager</span>
+</a>
+</li>
+<!-- Inactive Tabs -->
+<li>
+<a class="flex items-center gap-standard-gap text-on-surface-variant dark:text-on-surface-variant hover:text-on-surface px-4 py-2 hover:bg-surface-container-highest dark:hover:bg-surface-container-highest transition-colors duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="table_chart">table_chart</span>
+<span class="text-label-caps font-label-caps">Register Browser</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-standard-gap text-on-surface-variant dark:text-on-surface-variant hover:text-on-surface px-4 py-2 hover:bg-surface-container-highest dark:hover:bg-surface-container-highest transition-colors duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="visibility">visibility</span>
+<span class="text-label-caps font-label-caps">Watch List</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-standard-gap text-on-surface-variant dark:text-on-surface-variant hover:text-on-surface px-4 py-2 hover:bg-surface-container-highest dark:hover:bg-surface-container-highest transition-colors duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="terminal">terminal</span>
+<span class="text-label-caps font-label-caps">Traffic Inspector</span>
+</a>
+</li>
+</ul>
+</div>
+<!-- CTA & Footer -->
+<div class="p-4 border-t border-outline-variant space-y-4">
+<button class="w-full bg-primary-container text-on-primary-container hover:brightness-110 transition-all font-label-caps text-label-caps py-2 rounded">
+                Scan Network
+            </button>
+<ul class="space-y-1">
+<li>
+<a class="flex items-center gap-standard-gap text-on-surface-variant dark:text-on-surface-variant hover:text-on-surface px-4 py-2 hover:bg-surface-container-highest transition-colors duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="text-label-caps font-label-caps">Settings</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-standard-gap text-on-surface-variant dark:text-on-surface-variant hover:text-on-surface px-4 py-2 hover:bg-surface-container-highest transition-colors duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span class="text-label-caps font-label-caps">Support</span>
+</a>
+</li>
+</ul>
+</div>
+</nav>
+<!-- Main Workspace Area -->
+<div class="flex-1 ml-[240px] flex flex-col">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center w-full px-container-padding h-14 bg-surface-container dark:bg-surface-container border-b border-outline-variant dark:border-outline-variant z-40">
+<!-- Brand / Search Area -->
+<div class="flex items-center gap-4">
+<span class="text-headline-md font-headline-md font-black text-primary dark:text-primary">Morbus</span>
+<div class="relative ml-4">
+<span class="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm" data-icon="search">search</span>
+<input class="bg-surface-container-highest border border-outline-variant rounded pl-8 pr-3 py-1 text-data-mono font-data-mono text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all w-64 placeholder-on-surface-variant" placeholder="Search devices..." type="text"/>
+</div>
+</div>
+<!-- Actions -->
+<div class="flex items-center gap-gutter">
+<button class="text-on-surface-variant hover:text-primary hover:bg-surface-container-highest rounded-lg p-1.5 transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary hover:bg-surface-container-highest rounded-lg p-1.5 transition-colors">
+<span class="material-symbols-outlined" data-icon="wifi">wifi</span>
+</button>
+<div class="h-6 w-px bg-outline-variant mx-1"></div>
+<button class="text-label-caps font-label-caps border border-outline-variant text-on-surface hover:border-primary hover:text-primary px-3 py-1.5 rounded transition-all">
+                    Export
+                </button>
+<button class="text-label-caps font-label-caps bg-primary text-on-primary hover:brightness-110 px-3 py-1.5 rounded transition-all">
+                    Connect
+                </button>
+</div>
+</header>
+<!-- Content Canvas -->
+<main class="flex-1 overflow-y-auto p-container-padding bg-background relative">
+<!-- Background Decorative Grid (Subtle) -->
+<div class="absolute inset-0 pointer-events-none" style="background-size: 40px 40px; background-image: linear-gradient(to right, rgba(70, 69, 85, 0.1) 1px, transparent 1px), linear-gradient(to bottom, rgba(70, 69, 85, 0.1) 1px, transparent 1px);"></div>
+<div class="relative z-10 max-w-7xl mx-auto">
+<!-- Page Header -->
+<div class="flex justify-between items-end mb-6">
+<div>
+<h2 class="text-display-lg font-display-lg text-on-surface mb-1">Device Manager</h2>
+<p class="text-body-sm font-body-sm text-on-surface-variant">Monitor and manage connected Modbus nodes.</p>
+</div>
+</div>
+<!-- Device Cards Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-gutter">
+<!-- Connected Device Card 1 -->
+<div class="bg-surface-container border border-outline-variant rounded p-4 flex flex-col hover:border-primary transition-colors group relative overflow-hidden">
+<!-- Card Header -->
+<div class="flex justify-between items-start mb-4">
+<div>
+<h3 class="text-headline-md font-headline-md text-on-surface mb-1 truncate" title="Main PLC Rack 1">Main PLC Rack 1</h3>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-green-500 status-glow-active"></span>
+<span class="text-label-caps font-label-caps text-on-surface-variant">Connected</span>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-primary p-1 rounded hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+<!-- Data Fields -->
+<div class="space-y-3 mb-6 flex-1">
+<div>
+<span class="text-label-caps font-label-caps text-on-surface-variant block mb-0.5">IP ADDRESS</span>
+<span class="text-data-mono font-data-mono text-primary">192.168.1.50</span>
+</div>
+<div class="grid grid-cols-2 gap-2">
+<div>
+<span class="text-label-caps font-label-caps text-on-surface-variant block mb-0.5">PROTOCOL</span>
+<span class="text-body-sm font-body-sm text-on-surface">Modbus TCP</span>
+</div>
+<div>
+<span class="text-label-caps font-label-caps text-on-surface-variant block mb-0.5">LATENCY</span>
+<span class="text-data-mono font-data-mono text-on-surface">24ms</span>
+</div>
+</div>
+</div>
+<!-- Actions -->
+<div class="flex items-center justify-between border-t border-outline-variant pt-3 mt-auto">
+<div class="flex gap-2">
+<button class="text-on-surface-variant hover:text-primary p-1 rounded bg-surface-container-highest transition-colors" title="Settings">
+<span class="material-symbols-outlined text-sm" data-icon="settings">settings</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary p-1 rounded bg-surface-container-highest transition-colors" title="Browser">
+<span class="material-symbols-outlined text-sm" data-icon="table_chart">table_chart</span>
+</button>
+</div>
+<button class="text-label-caps font-label-caps text-error border border-error/50 hover:bg-error/10 px-2 py-1 rounded transition-colors">
+                                Disconnect
+                            </button>
+</div>
+</div>
+<!-- Connected Device Card 2 -->
+<div class="bg-surface-container border border-outline-variant rounded p-4 flex flex-col hover:border-primary transition-colors group relative overflow-hidden">
+<div class="flex justify-between items-start mb-4">
+<div>
+<h3 class="text-headline-md font-headline-md text-on-surface mb-1 truncate" title="HVAC Controller B">HVAC Controller B</h3>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-green-500 status-glow-active"></span>
+<span class="text-label-caps font-label-caps text-on-surface-variant">Connected</span>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-primary p-1 rounded hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+<div class="space-y-3 mb-6 flex-1">
+<div>
+<span class="text-label-caps font-label-caps text-on-surface-variant block mb-0.5">IP ADDRESS</span>
+<span class="text-data-mono font-data-mono text-primary">192.168.1.112</span>
+</div>
+<div class="grid grid-cols-2 gap-2">
+<div>
+<span class="text-label-caps font-label-caps text-on-surface-variant block mb-0.5">PROTOCOL</span>
+<span class="text-body-sm font-body-sm text-on-surface">Modbus TCP</span>
+</div>
+<div>
+<span class="text-label-caps font-label-caps text-on-surface-variant block mb-0.5">LATENCY</span>
+<span class="text-data-mono font-data-mono text-on-surface">45ms</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between border-t border-outline-variant pt-3 mt-auto">
+<div class="flex gap-2">
+<button class="text-on-surface-variant hover:text-primary p-1 rounded bg-surface-container-highest transition-colors" title="Settings">
+<span class="material-symbols-outlined text-sm" data-icon="settings">settings</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary p-1 rounded bg-surface-container-highest transition-colors" title="Browser">
+<span class="material-symbols-outlined text-sm" data-icon="table_chart">table_chart</span>
+</button>
+</div>
+<button class="text-label-caps font-label-caps text-error border border-error/50 hover:bg-error/10 px-2 py-1 rounded transition-colors">
+                                Disconnect
+                            </button>
+</div>
+</div>
+<!-- Disconnected Device Card -->
+<div class="bg-surface-container border border-outline-variant rounded p-4 flex flex-col hover:border-outline transition-colors group relative overflow-hidden opacity-70">
+<div class="flex justify-between items-start mb-4">
+<div>
+<h3 class="text-headline-md font-headline-md text-on-surface mb-1 truncate" title="Sensor Array 04">Sensor Array 04</h3>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-red-500 status-glow-inactive"></span>
+<span class="text-label-caps font-label-caps text-error">Offline</span>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-on-surface p-1 rounded hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+<div class="space-y-3 mb-6 flex-1">
+<div>
+<span class="text-label-caps font-label-caps text-on-surface-variant block mb-0.5">SERIAL PORT</span>
+<span class="text-data-mono font-data-mono text-on-surface-variant">COM3 (9600, 8, N, 1)</span>
+</div>
+<div class="grid grid-cols-2 gap-2">
+<div>
+<span class="text-label-caps font-label-caps text-on-surface-variant block mb-0.5">PROTOCOL</span>
+<span class="text-body-sm font-body-sm text-on-surface-variant">Modbus RTU</span>
+</div>
+<div>
+<span class="text-label-caps font-label-caps text-on-surface-variant block mb-0.5">LAST SEEN</span>
+<span class="text-data-mono font-data-mono text-on-surface-variant">2h ago</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between border-t border-outline-variant pt-3 mt-auto">
+<div class="flex gap-2">
+<button class="text-on-surface-variant hover:text-on-surface p-1 rounded bg-surface-container-highest transition-colors" title="Settings">
+<span class="material-symbols-outlined text-sm" data-icon="settings">settings</span>
+</button>
+</div>
+<button class="text-label-caps font-label-caps text-primary border border-primary/50 hover:bg-primary/10 px-2 py-1 rounded transition-colors">
+                                Reconnect
+                            </button>
+</div>
+</div>
+<!-- Add New Device - Empty State Card -->
+<button class="bg-surface-container-low border-2 border-dashed border-outline-variant hover:border-primary hover:bg-surface-container rounded p-4 flex flex-col items-center justify-center min-h-[220px] transition-all group">
+<div class="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center mb-3 group-hover:bg-primary/20 group-hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-3xl" data-icon="add">add</span>
+</div>
+<span class="text-headline-md font-headline-md text-on-surface group-hover:text-primary transition-colors">Add Device</span>
+<span class="text-body-sm font-body-sm text-on-surface-variant text-center mt-1">Configure a new Modbus TCP or RTU connection.</span>
+</button>
+</div>
+</div>
+</main>
+</div>
+</body></html>
