@@ -21,8 +21,8 @@ describe('RegisterBrowser Component', () => {
                     id: "group1",
                     modbus_table: 3,
                     definitions: [
-                        { register: 0, count: 1, data_type: "UInt16" },
-                        { register: 1, count: 2, data_type: "Float32" }
+                        { register: 0, count: 1, data_type: "uint16" },
+                        { register: 1, count: 2, data_type: "float32" }
                     ]
                 }
             }
@@ -30,26 +30,26 @@ describe('RegisterBrowser Component', () => {
     });
     it('renders the structure without data', async () => {
         render(<RegisterBrowser data={{}} deviceID="dev1" />);
-        expect(screen.getByText(/Register Map/i)).toBeInTheDocument();
-        expect(screen.getByText(/Data Lab/i)).toBeInTheDocument();
         
         await waitFor(() => {
             expect(AppBindings.GetDeviceConfig).toHaveBeenCalledWith('dev1');
+            expect(screen.getByText(/Register Map/i)).toBeInTheDocument();
+            expect(screen.getByText(/Data Lab/i)).toBeInTheDocument();
         });
     });
 
     it('displays live data values passed from the engine', async () => {
-        render(<RegisterBrowser data={{ 1: { value: 1234, raw: [17562, 16384] } }} deviceID="dev1" />);
+        render(<RegisterBrowser data={{ group1: { 0: { value: 1234, raw: [1234] }, 1: { value: 1234, raw: [17562, 16384] } } }} deviceID="dev1" />);
         
         // Wait for config to load
         await waitFor(() => {
-            expect(screen.getByText('1234')).toBeInTheDocument();
+            expect(screen.getAllByText('1234').length).toBeGreaterThan(0);
         });
         // It should display the raw hex in the table
         expect(screen.getByText('0x449A 0x4000')).toBeInTheDocument();
 
-        // Click on the row
-        await userEvent.click(screen.getByText('1234'));
+        // Click on the float row
+        await userEvent.click(screen.getByText('0x449A 0x4000'));
 
         // The Data Lab should now show the raw hex and name
         expect(screen.getByText('RAW HEX BUFFER')).toBeInTheDocument();

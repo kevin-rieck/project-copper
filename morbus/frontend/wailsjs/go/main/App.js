@@ -10,6 +10,10 @@ export function AddDevice(arg1, arg2, arg3) {
   return window['go']['main']['App']['AddDevice'](arg1, arg2, arg3);
 }
 
+export function AddDeviceWithDefaults(arg1, arg2) {
+  return window['go']['main']['App']['AddDeviceWithDefaults'](arg1, arg2);
+}
+
 export function AddRegisterDefinition(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['AddRegisterDefinition'](arg1, arg2, arg3, arg4, arg5);
 }

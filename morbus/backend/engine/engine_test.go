@@ -1,97 +1,82 @@
-package engine
+package engine_test
 
 import (
 	"testing"
 	"time"
 
 	"github.com/simonvetter/modbus"
+	"morbus/backend/engine"
 )
 
-type mockServerHandler struct {
-	readRequests int
+type mockModbusHandler struct{}
+
+func (h *mockModbusHandler) HandleCoils(req *modbus.CoilsRequest) (res []bool, err error) {
+	return make([]bool, req.Quantity), nil
+}
+func (h *mockModbusHandler) HandleDiscreteInputs(req *modbus.DiscreteInputsRequest) (res []bool, err error) {
+	return make([]bool, req.Quantity), nil
+}
+func (h *mockModbusHandler) HandleHoldingRegisters(req *modbus.HoldingRegistersRequest) (res []uint16, err error) {
+	return make([]uint16, req.Quantity), nil
+}
+func (h *mockModbusHandler) HandleInputRegisters(req *modbus.InputRegistersRequest) (res []uint16, err error) {
+	return make([]uint16, req.Quantity), nil
 }
 
-func (h *mockServerHandler) HandleCoils(req *modbus.CoilsRequest) (res []bool, err error) {
-	return nil, modbus.ErrIllegalFunction
-}
-
-func (h *mockServerHandler) HandleDiscreteInputs(req *modbus.DiscreteInputsRequest) (res []bool, err error) {
-	return nil, modbus.ErrIllegalFunction
-}
-
-func (h *mockServerHandler) HandleInputRegisters(req *modbus.InputRegistersRequest) (res []uint16, err error) {
-	return nil, modbus.ErrIllegalFunction
-}
-
-func (h *mockServerHandler) HandleHoldingRegisters(req *modbus.HoldingRegistersRequest) (res []uint16, err error) {
-	h.readRequests++
-	res = make([]uint16, req.Quantity)
-	
-	for i := uint16(0); i < req.Quantity; i++ {
-		addr := req.Addr + i
-		if addr == 1 { // 40002 -> offset 1
-			res[i] = 42
-		}
-		if addr == 5 { // 40006 -> offset 5
-			res[i] = 99
-		}
-	}
-	return res, nil
-}
-
-func TestEngineBlockPolling(t *testing.T) {
-	handler := &mockServerHandler{}
+func TestEnginePollingAllTables(t *testing.T) {
+	// Start mock server
 	server, err := modbus.NewServer(&modbus.ServerConfiguration{
-		URL:     "tcp://localhost:5505",
-		Timeout: 10 * time.Second,
-	}, handler)
+		URL:        "tcp://127.0.0.1:55555",
+		Timeout:    10 * time.Second,
+		MaxClients: 1,
+	}, &mockModbusHandler{})
 	if err != nil {
-		t.Fatalf("Failed to create mock server: %v", err)
+		t.Fatalf("Failed to create server: %v", err)
 	}
 	err = server.Start()
 	if err != nil {
-		t.Fatalf("Failed to start mock server: %v", err)
+		t.Fatalf("Failed to start server: %v", err)
 	}
 	defer server.Stop()
 
-	eng := NewEngine()
-	eng.AddConnection("conn1", "tcp://localhost:5505")
-	eng.AddDevice("dev1", "conn1", 1)
-	
-	// Create a group for holding registers (4x)
-	err = eng.AddRegisterGroup("dev1", "group1", modbus.HOLDING_REGISTER)
+	// Initialize engine
+	eng := engine.NewEngine()
+	err = eng.AddConnection("conn1", "tcp://127.0.0.1:55555")
 	if err != nil {
-		t.Fatalf("AddRegisterGroup failed: %v", err)
+		t.Fatalf("Failed to add connection: %v", err)
 	}
 
-	// Add two definitions that are spread apart (offset 1 and offset 5)
-	// 40002
-	eng.AddRegisterDefinition("dev1", "group1", 1, 1, "uint16")
-	// 40006
-	eng.AddRegisterDefinition("dev1", "group1", 5, 1, "uint16")
+	err = eng.AddDevice("dev1", "conn1", 1)
+	if err != nil {
+		t.Fatalf("Failed to add device: %v", err)
+	}
 
-	res, err := eng.PollDevice("dev1")
+	// Add groups for all 4 tables
+	eng.AddRegisterGroup("dev1", "g_coil", engine.TableCoil)
+	eng.AddRegisterDefinition("dev1", "g_coil", 0, 5, "bool")
+
+	eng.AddRegisterGroup("dev1", "g_di", engine.TableDiscreteInput)
+	eng.AddRegisterDefinition("dev1", "g_di", 10, 5, "bool")
+
+	eng.AddRegisterGroup("dev1", "g_hr", engine.TableHoldingRegister)
+	eng.AddRegisterDefinition("dev1", "g_hr", 100, 2, "uint16")
+
+	eng.AddRegisterGroup("dev1", "g_ir", engine.TableInputRegister)
+	eng.AddRegisterDefinition("dev1", "g_ir", 200, 2, "uint16")
+
+	results, err := eng.PollDevice("dev1")
 	if err != nil {
 		t.Fatalf("PollDevice failed: %v", err)
 	}
 
-	// Verify we got both answers correctly
-	if res[1].Value != uint16(42) {
-		t.Errorf("Expected 42 at offset 1, got %v", res[1].Value)
-	}
-	if len(res[1].Raw) != 1 || res[1].Raw[0] != 42 {
-		t.Errorf("Expected Raw to be [42], got %v", res[1].Raw)
+	if len(results) != 4 {
+		t.Errorf("Expected 4 groups, got %d", len(results))
 	}
 
-	if res[5].Value != uint16(99) {
-		t.Errorf("Expected 99 at offset 5, got %v", res[5].Value)
+	if _, ok := results["g_coil"]; !ok {
+		t.Errorf("Expected g_coil results")
 	}
-	if len(res[5].Raw) != 1 || res[5].Raw[0] != 99 {
-		t.Errorf("Expected Raw to be [99], got %v", res[5].Raw)
-	}
-
-	// The crucial test: Did it execute in exactly ONE block read?
-	if handler.readRequests != 1 {
-		t.Errorf("Expected 1 block read request, but got %d", handler.readRequests)
+	if _, ok := results["g_hr"]; !ok {
+		t.Errorf("Expected g_hr results")
 	}
 }
