@@ -152,6 +152,15 @@ func (e *Engine) AddRegisterDefinition(deviceID string, groupID string, register
 	if !ok {
 		return fmt.Errorf("group %s not found in device %s", groupID, deviceID)
 	}
+	newStart := uint32(register)
+	newEnd := newStart + uint32(count) - 1
+	for _, existing := range group.Definitions {
+		existingStart := uint32(existing.Register)
+		existingEnd := existingStart + uint32(existing.Count) - 1
+		if newStart <= existingEnd && existingStart <= newEnd {
+			return fmt.Errorf("register definition at %d spanning %d register(s) overlaps existing definition at %d spanning %d register(s) in group %s", register, count, existing.Register, existing.Count, groupID)
+		}
+	}
 	group.Definitions = append(group.Definitions, RegisterDefinition{
 		Register: register,
 		Count:    count,

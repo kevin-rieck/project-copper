@@ -100,4 +100,26 @@ describe('RegisterBrowser Component', () => {
         expect(AppBindings.AddRegisterDefinition).toHaveBeenCalledWith('dev1', 'group1', 2, 1, 'uint16');
         expect(AppBindings.GetDeviceConfig).toHaveBeenCalledTimes(2);
     });
+
+    it('surfaces backend validation errors when a register definition cannot be added', async () => {
+        const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+        (AppBindings.AddRegisterDefinition as any).mockRejectedValue(
+            'register definition at 1 spanning 2 register(s) overlaps existing definition at 1 spanning 2 register(s) in group group1'
+        );
+
+        render(<RegisterBrowser data={{}} deviceID="dev1" />);
+        await waitFor(() => expect(AppBindings.GetDeviceConfig).toHaveBeenCalledWith('dev1'));
+
+        await userEvent.click(screen.getByRole('button', { name: /Add Register/i }));
+        await userEvent.type(screen.getByPlaceholderText('Address (e.g. 0)'), '1');
+        await userEvent.selectOptions(screen.getByRole('combobox', { name: /Data Type/i }), 'float32');
+        await userEvent.click(screen.getByRole('button', { name: /Save Register/i }));
+
+        expect(alertSpy).toHaveBeenCalledWith(
+            'Failed to add register: register definition at 1 spanning 2 register(s) overlaps existing definition at 1 spanning 2 register(s) in group group1'
+        );
+        expect(AppBindings.GetDeviceConfig).toHaveBeenCalledTimes(1);
+
+        alertSpy.mockRestore();
+    });
 });

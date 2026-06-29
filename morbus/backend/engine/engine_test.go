@@ -85,6 +85,72 @@ func TestEngineLoadConfigReplacesTheCurrentProjectLayout(t *testing.T) {
 	}
 }
 
+func TestEngineRejectsDuplicateRegisterDefinitionsInSameGroup(t *testing.T) {
+	eng := engine.NewEngine()
+	if err := eng.AddDevice("dev1", "conn1", 1); err != nil {
+		t.Fatalf("Failed to add device: %v", err)
+	}
+	if err := eng.AddRegisterGroup("dev1", "holding", engine.TableHoldingRegister); err != nil {
+		t.Fatalf("Failed to add group: %v", err)
+	}
+	if err := eng.AddRegisterDefinition("dev1", "holding", 10, 1, "uint16"); err != nil {
+		t.Fatalf("Failed to add first register definition: %v", err)
+	}
+
+	err := eng.AddRegisterDefinition("dev1", "holding", 10, 1, "uint16")
+	if err == nil {
+		t.Fatalf("expected duplicate register definition to be rejected")
+	}
+	if got, want := err.Error(), "register definition at 10 spanning 1 register(s) overlaps existing definition at 10 spanning 1 register(s) in group holding"; got != want {
+		t.Fatalf("unexpected error message:\n got: %s\nwant: %s", got, want)
+	}
+}
+
+func TestEngineRejectsOverlappingRegisterDefinitionsInSameGroup(t *testing.T) {
+	eng := engine.NewEngine()
+	if err := eng.AddDevice("dev1", "conn1", 1); err != nil {
+		t.Fatalf("Failed to add device: %v", err)
+	}
+	if err := eng.AddRegisterGroup("dev1", "holding", engine.TableHoldingRegister); err != nil {
+		t.Fatalf("Failed to add group: %v", err)
+	}
+	if err := eng.AddRegisterDefinition("dev1", "holding", 10, 1, "uint16"); err != nil {
+		t.Fatalf("Failed to add first register definition: %v", err)
+	}
+
+	err := eng.AddRegisterDefinition("dev1", "holding", 10, 2, "float32")
+	if err == nil {
+		t.Fatalf("expected overlapping register definition to be rejected")
+	}
+	if got, want := err.Error(), "register definition at 10 spanning 2 register(s) overlaps existing definition at 10 spanning 1 register(s) in group holding"; got != want {
+		t.Fatalf("unexpected error message:\n got: %s\nwant: %s", got, want)
+	}
+}
+
+func TestEngineAllowsAdjacentRegisterDefinitionsInSameGroup(t *testing.T) {
+	eng := engine.NewEngine()
+	if err := eng.AddDevice("dev1", "conn1", 1); err != nil {
+		t.Fatalf("Failed to add device: %v", err)
+	}
+	if err := eng.AddRegisterGroup("dev1", "holding", engine.TableHoldingRegister); err != nil {
+		t.Fatalf("Failed to add group: %v", err)
+	}
+	if err := eng.AddRegisterDefinition("dev1", "holding", 10, 1, "uint16"); err != nil {
+		t.Fatalf("Failed to add first register definition: %v", err)
+	}
+	if err := eng.AddRegisterDefinition("dev1", "holding", 11, 1, "uint16"); err != nil {
+		t.Fatalf("expected adjacent register definition to be accepted: %v", err)
+	}
+
+	dev, err := eng.GetDeviceConfig("dev1")
+	if err != nil {
+		t.Fatalf("Failed to load device config: %v", err)
+	}
+	if got, want := len(dev.Groups["holding"].Definitions), 2; got != want {
+		t.Fatalf("expected adjacent definitions to be stored, got %d", got)
+	}
+}
+
 func TestEnginePollingAllTables(t *testing.T) {
 	// Start mock server
 	server, err := modbus.NewServer(&modbus.ServerConfiguration{

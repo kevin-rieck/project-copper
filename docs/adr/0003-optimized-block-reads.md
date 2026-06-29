@@ -12,7 +12,7 @@ Our Modbus utility allows users to define a logical `RegisterGroup` (e.g., "Driv
 
 The initial polling engine iterated over every `RegisterDefinition` sequentially, issuing a dedicated Modbus network request for each one (e.g., `ReadRegisters(40001, 2)`, then `ReadRegisters(40005, 1)`). While simple to implement, this approach scales terribly. Over high-latency connections like serial RTU, issuing 50 sequential read requests for a single group can take seconds, destroying the real-time responsiveness required for an engineering utility.
 
-Furthermore, we decided to allow overlapping `RegisterDefinitions` (e.g., interpreting the same 16-bit word as an Int16 and simultaneously as part of a Float32). If we read them individually, we would fetch the exact same bytes from the network multiple times.
+Register definitions in a single group must not overlap. This keeps the register map unambiguous while still letting the polling engine optimize each group's contiguous address span.
 
 ## Decision
 
@@ -29,7 +29,7 @@ The polling engine will:
 **Positive:**
 - Drastically reduces network traffic and latency.
 - Ensures all registers in a group are sampled at the exact same point in time (data coherence).
-- Overlapping definitions are highly efficient, as the bytes are only fetched once.
+- Non-overlapping definitions in the same contiguous span are fetched together.
 
 **Negative:**
 - The engine logic becomes significantly more complex, requiring buffer arithmetic and chunking algorithms.
