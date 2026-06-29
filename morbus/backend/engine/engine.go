@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"sort"
+	"sync"
 	"time"
 
 	"github.com/simonvetter/modbus"
@@ -30,10 +32,10 @@ type PollResult struct {
 type ModbusTableType uint8
 
 const (
-	TableCoil             ModbusTableType = 0
-	TableDiscreteInput    ModbusTableType = 1
-	TableHoldingRegister  ModbusTableType = 3
-	TableInputRegister    ModbusTableType = 4
+	TableCoil            ModbusTableType = 0
+	TableDiscreteInput   ModbusTableType = 1
+	TableHoldingRegister ModbusTableType = 3
+	TableInputRegister   ModbusTableType = 4
 )
 
 type RegisterGroup struct {
@@ -57,6 +59,7 @@ type Engine struct {
 	OnError func(deviceID string, err error)
 
 	stopChan chan struct{}
+	pollWG   sync.WaitGroup
 }
 
 func NewEngine() *Engine {
@@ -116,6 +119,15 @@ func (e *Engine) GetDeviceConfig(deviceID string) (*Device, error) {
 		return nil, fmt.Errorf("device %s not found", deviceID)
 	}
 	return dev, nil
+}
+
+func (e *Engine) DeviceIDs() []string {
+	ids := make([]string, 0, len(e.devices))
+	for id := range e.devices {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	return ids
 }
 
 func (e *Engine) AddRegisterGroup(deviceID string, groupID string, table ModbusTableType) error {
@@ -262,11 +274,14 @@ func (e *Engine) StartPolling(interval time.Duration) {
 	e.stopChan = make(chan struct{})
 
 	for _, dev := range e.devices {
+		e.pollWG.Add(1)
 		go e.pollDeviceLoop(dev.ID, interval)
 	}
 }
 
 func (e *Engine) pollDeviceLoop(deviceID string, interval time.Duration) {
+	defer e.pollWG.Done()
+
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
@@ -292,6 +307,7 @@ func (e *Engine) pollDeviceLoop(deviceID string, interval time.Duration) {
 func (e *Engine) StopPolling() {
 	if e.stopChan != nil {
 		close(e.stopChan)
+		e.pollWG.Wait()
 		e.stopChan = nil
 	}
 }
@@ -353,6 +369,13 @@ func (e *Engine) LoadConfig(path string) error {
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		return err
 	}
+
+	e.StopPolling()
+	for _, c := range e.connections {
+		_ = c.client.Close()
+	}
+	e.connections = make(map[string]*Connection)
+	e.devices = make(map[string]*Device)
 
 	for _, c := range cfg.Connections {
 		if err := e.AddConnection(c.ID, c.URI); err != nil {

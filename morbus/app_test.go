@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -117,6 +120,111 @@ func TestAppAddDeviceWithDefaults(t *testing.T) {
 		}
 		if def.Register != 0 || def.Count != 10 || def.DataType != expectedType {
 			t.Errorf("Unexpected definition for group %q: %+v", groupID, def)
+		}
+	}
+}
+
+func TestAppSaveConfigPromptsForAJsonFileAndWritesTheCurrentProject(t *testing.T) {
+	uri := "tcp://127.0.0.1:55604"
+	startAppTestServer(t, uri)
+
+	targetPath := filepath.Join(t.TempDir(), "project.morbus.json")
+	app := NewApp()
+	app.startup(context.Background())
+	app.saveFileDialog = func() (string, error) {
+		return targetPath, nil
+	}
+	defer app.Engine.StopPolling()
+
+	if err := app.AddDeviceWithDefaults(uri, 7); err != nil {
+		t.Fatalf("AddDeviceWithDefaults failed: %v", err)
+	}
+
+	if err := app.SaveConfig(); err != nil {
+		t.Fatalf("SaveConfig failed: %v", err)
+	}
+
+	data, err := os.ReadFile(targetPath)
+	if err != nil {
+		t.Fatalf("expected config file to be written: %v", err)
+	}
+
+	var cfg engine.Config
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		t.Fatalf("saved config is not valid JSON config: %v", err)
+	}
+	if len(cfg.Connections) != 1 || cfg.Connections[0].URI != uri {
+		t.Fatalf("expected saved connection %q, got %+v", uri, cfg.Connections)
+	}
+	if len(cfg.Devices) != 1 || cfg.Devices[0].ID != uri+"_7" {
+		t.Fatalf("expected saved device %q, got %+v", uri+"_7", cfg.Devices)
+	}
+}
+
+func TestAppLoadConfigPromptsForAJsonFileReplacesProjectAndReturnsTheActiveDevice(t *testing.T) {
+	oldURI := "tcp://127.0.0.1:55605"
+	newURI := "tcp://127.0.0.1:55606"
+	startAppTestServer(t, oldURI)
+	startAppTestServer(t, newURI)
+
+	newProject := engine.NewEngine()
+	if err := newProject.AddConnection("new_conn", newURI); err != nil {
+		t.Fatalf("Failed to add new connection: %v", err)
+	}
+	if err := newProject.AddDevice("loaded_device", "new_conn", 3); err != nil {
+		t.Fatalf("Failed to add loaded device: %v", err)
+	}
+	if err := newProject.AddRegisterGroup("loaded_device", "holding_regs", engine.TableHoldingRegister); err != nil {
+		t.Fatalf("Failed to add group: %v", err)
+	}
+
+	configPath := filepath.Join(t.TempDir(), "project.morbus.json")
+	if err := newProject.SaveConfig(configPath); err != nil {
+		t.Fatalf("Failed to save project fixture: %v", err)
+	}
+
+	app := NewApp()
+	app.startup(context.Background())
+	app.loadFileDialog = func() (string, error) {
+		return configPath, nil
+	}
+	defer app.Engine.StopPolling()
+
+	if err := app.AddDeviceWithDefaults(oldURI, 1); err != nil {
+		t.Fatalf("AddDeviceWithDefaults failed: %v", err)
+	}
+	polledDevices := make(chan string, 10)
+	app.Engine.OnData = func(deviceID string, _ map[string]map[uint16]engine.PollResult) {
+		polledDevices <- deviceID
+	}
+
+	loaded, err := app.LoadConfig()
+	if err != nil {
+		t.Fatalf("LoadConfig failed: %v", err)
+	}
+
+	if loaded.ActiveDeviceID != "loaded_device" {
+		t.Fatalf("expected loaded_device to become active, got %+v", loaded)
+	}
+	if _, err := app.GetDeviceConfig(oldURI + "_1"); err == nil {
+		t.Fatalf("expected previous project device to be removed")
+	}
+	if _, err := app.GetDeviceConfig("loaded_device"); err != nil {
+		t.Fatalf("expected loaded device to be available: %v", err)
+	}
+	if _, err := app.Engine.PollDevice("loaded_device"); err != nil {
+		t.Fatalf("expected loaded device to be pollable: %v", err)
+	}
+
+	deadline := time.After(2 * time.Second)
+	for {
+		select {
+		case deviceID := <-polledDevices:
+			if deviceID == "loaded_device" {
+				return
+			}
+		case <-deadline:
+			t.Fatalf("expected polling to restart for loaded_device after loading config")
 		}
 	}
 }

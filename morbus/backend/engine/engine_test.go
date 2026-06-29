@@ -1,6 +1,7 @@
 package engine_test
 
 import (
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -21,6 +22,67 @@ func (h *mockModbusHandler) HandleHoldingRegisters(req *modbus.HoldingRegistersR
 }
 func (h *mockModbusHandler) HandleInputRegisters(req *modbus.InputRegistersRequest) (res []uint16, err error) {
 	return make([]uint16, req.Quantity), nil
+}
+
+func TestEngineLoadConfigReplacesTheCurrentProjectLayout(t *testing.T) {
+	oldURI := "tcp://127.0.0.1:55556"
+	newURI := "tcp://127.0.0.1:55557"
+	startMockServer := func(uri string) {
+		t.Helper()
+		server, err := modbus.NewServer(&modbus.ServerConfiguration{
+			URL:        uri,
+			Timeout:    10 * time.Second,
+			MaxClients: 2,
+		}, &mockModbusHandler{})
+		if err != nil {
+			t.Fatalf("Failed to create server %s: %v", uri, err)
+		}
+		if err := server.Start(); err != nil {
+			t.Fatalf("Failed to start server %s: %v", uri, err)
+		}
+		t.Cleanup(func() { _ = server.Stop() })
+	}
+	startMockServer(oldURI)
+	startMockServer(newURI)
+
+	oldProject := engine.NewEngine()
+	if err := oldProject.AddConnection("old_conn", oldURI); err != nil {
+		t.Fatalf("Failed to add old connection: %v", err)
+	}
+	if err := oldProject.AddDevice("old_device", "old_conn", 1); err != nil {
+		t.Fatalf("Failed to add old device: %v", err)
+	}
+
+	newProject := engine.NewEngine()
+	if err := newProject.AddConnection("new_conn", newURI); err != nil {
+		t.Fatalf("Failed to add new connection: %v", err)
+	}
+	if err := newProject.AddDevice("new_device", "new_conn", 2); err != nil {
+		t.Fatalf("Failed to add new device: %v", err)
+	}
+	if err := newProject.AddRegisterGroup("new_device", "holding", engine.TableHoldingRegister); err != nil {
+		t.Fatalf("Failed to add group: %v", err)
+	}
+
+	path := filepath.Join(t.TempDir(), "new-project.json")
+	if err := newProject.SaveConfig(path); err != nil {
+		t.Fatalf("Failed to save new project: %v", err)
+	}
+
+	if err := oldProject.LoadConfig(path); err != nil {
+		t.Fatalf("LoadConfig failed: %v", err)
+	}
+
+	if _, err := oldProject.GetDeviceConfig("old_device"); err == nil {
+		t.Fatalf("expected old device to be removed after loading a new project")
+	}
+	loadedDevice, err := oldProject.GetDeviceConfig("new_device")
+	if err != nil {
+		t.Fatalf("expected new device to be available after load: %v", err)
+	}
+	if _, ok := loadedDevice.Groups["holding"]; !ok {
+		t.Fatalf("expected loaded register groups to be available, got %+v", loadedDevice.Groups)
+	}
 }
 
 func TestEnginePollingAllTables(t *testing.T) {

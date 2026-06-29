@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { AddDeviceWithDefaults } from '../wailsjs/go/main/App';
+import { AddDeviceWithDefaults, LoadConfig, SaveConfig } from '../wailsjs/go/main/App';
 import { EventsOn } from '../wailsjs/runtime/runtime';
 import { RegisterBrowser } from './RegisterBrowser';
 import { AddDeviceModal } from './AddDeviceModal';
@@ -13,6 +13,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("device_manager");
   const [watchList, setWatchList] = useState<string[]>([]);
   const [activeDeviceID, setActiveDeviceID] = useState<string | undefined>(undefined);
+  const [configRevision, setConfigRevision] = useState(0);
   const { addToast } = useToast();
 
   const toggleWatch = (groupId: string, reg: number) => {
@@ -53,6 +54,35 @@ export default function App() {
     setIsModalOpen(false);
     
     addToast(`Connected to ${uri} (Slave ${slaveId}) successfully`, 'success');
+  };
+
+  const handleSaveConfig = async () => {
+    try {
+      await SaveConfig();
+      addToast('Configuration saved successfully', 'success');
+    } catch (err) {
+      console.error('Failed to save configuration:', err);
+      addToast(`Failed to save configuration: ${err}`, 'error');
+    }
+  };
+
+  const handleLoadConfig = async () => {
+    try {
+      const result = await LoadConfig();
+      setModbusData(null);
+      setWatchList([]);
+      if (result?.activeDeviceID) {
+        setActiveDeviceID(result.activeDeviceID);
+        setConfigRevision((revision) => revision + 1);
+        setDeviceStatus('Offline');
+        setLastError('');
+        setActiveTab('register_browser');
+        addToast('Configuration loaded successfully', 'success');
+      }
+    } catch (err) {
+      console.error('Failed to load configuration:', err);
+      addToast(`Failed to load configuration: ${err}`, 'error');
+    }
   };
   return (
     <>
@@ -173,8 +203,17 @@ export default function App() {
               <span className="material-symbols-outlined">wifi</span>
             </button>
             <div className="h-6 w-px bg-outline-variant mx-1"></div>
-            <button className="text-label-caps font-label-caps border border-outline-variant text-on-surface hover:border-primary hover:text-primary px-3 py-1.5 rounded transition-all">
-              Export
+            <button
+              onClick={handleLoadConfig}
+              className="text-label-caps font-label-caps border border-outline-variant text-on-surface hover:border-primary hover:text-primary px-3 py-1.5 rounded transition-all"
+            >
+              Load
+            </button>
+            <button
+              onClick={handleSaveConfig}
+              className="text-label-caps font-label-caps border border-outline-variant text-on-surface hover:border-primary hover:text-primary px-3 py-1.5 rounded transition-all"
+            >
+              Save
             </button>
             <button 
               className="text-label-caps font-label-caps bg-primary text-on-primary hover:brightness-110 px-3 py-1.5 rounded transition-all" 
@@ -214,6 +253,7 @@ export default function App() {
             <div className="h-[calc(100vh-140px)] w-full border border-outline-variant rounded overflow-hidden bg-surface-container-lowest">
               {activeTab === 'register_browser' && (
                 <RegisterBrowser 
+                  key={`${activeDeviceID ?? 'no-device'}:${configRevision}`}
                   data={modbusData || {}} 
                   deviceID={activeDeviceID}
                   watchList={watchList} 
@@ -222,7 +262,7 @@ export default function App() {
               )}
               {activeTab === 'device_manager' && (
                 <div className="p-6">
-                  {deviceStatus === 'Offline' || !activeDeviceID ? (
+                  {!activeDeviceID ? (
                     <div className="flex flex-col items-center justify-center h-full text-on-surface-variant opacity-60 pt-20">
                       <span className="material-symbols-outlined text-4xl mb-4">settings_input_component</span>
                       <p className="text-center text-lg mb-4">No devices connected.</p>

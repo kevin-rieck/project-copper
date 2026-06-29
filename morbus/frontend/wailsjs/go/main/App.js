@@ -26,6 +26,14 @@ export function GetDeviceConfig(arg1) {
   return window['go']['main']['App']['GetDeviceConfig'](arg1);
 }
 
+export function LoadConfig() {
+  return window['go']['main']['App']['LoadConfig']();
+}
+
+export function SaveConfig() {
+  return window['go']['main']['App']['SaveConfig']();
+}
+
 export function StartPolling() {
   return window['go']['main']['App']['StartPolling']();
 }
