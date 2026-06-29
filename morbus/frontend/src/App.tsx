@@ -69,16 +69,18 @@ export default function App() {
   const handleLoadConfig = async () => {
     try {
       const result = await LoadConfig();
+      if (!result || result.loaded === false) {
+        return;
+      }
+
       setModbusData(null);
       setWatchList([]);
-      if (result?.activeDeviceID) {
-        setActiveDeviceID(result.activeDeviceID);
-        setConfigRevision((revision) => revision + 1);
-        setDeviceStatus('Offline');
-        setLastError('');
-        setActiveTab('register_browser');
-        addToast('Configuration loaded successfully', 'success');
-      }
+      setActiveDeviceID(result.activeDeviceID || undefined);
+      setConfigRevision((revision) => revision + 1);
+      setDeviceStatus('Offline');
+      setLastError('');
+      setActiveTab(result.activeDeviceID ? 'register_browser' : 'device_manager');
+      addToast('Configuration loaded successfully', 'success');
     } catch (err) {
       console.error('Failed to load configuration:', err);
       addToast(`Failed to load configuration: ${err}`, 'error');

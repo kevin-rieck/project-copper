@@ -93,6 +93,7 @@ export namespace engine {
 export namespace main {
 	
 	export class ConfigLoadResult {
+	    loaded: boolean;
 	    activeDeviceID: string;
 	    deviceIDs: string[];
 	
@@ -102,6 +103,7 @@ export namespace main {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.loaded = source["loaded"];
 	        this.activeDeviceID = source["activeDeviceID"];
 	        this.deviceIDs = source["deviceIDs"];
 	    }

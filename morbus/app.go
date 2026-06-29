@@ -20,6 +20,7 @@ type App struct {
 }
 
 type ConfigLoadResult struct {
+	Loaded         bool     `json:"loaded"`
 	ActiveDeviceID string   `json:"activeDeviceID"`
 	DeviceIDs      []string `json:"deviceIDs"`
 }
@@ -98,7 +99,7 @@ func (a *App) LoadConfig() (*ConfigLoadResult, error) {
 		return nil, err
 	}
 	if path == "" {
-		return &ConfigLoadResult{}, nil
+		return &ConfigLoadResult{Loaded: false}, nil
 	}
 	if err := a.Engine.LoadConfig(path); err != nil {
 		return nil, err
@@ -112,6 +113,7 @@ func (a *App) LoadConfig() (*ConfigLoadResult, error) {
 	}
 
 	return &ConfigLoadResult{
+		Loaded:         true,
 		ActiveDeviceID: activeDeviceID,
 		DeviceIDs:      deviceIDs,
 	}, nil
