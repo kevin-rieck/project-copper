@@ -96,30 +96,35 @@ func TestAppAddDeviceWithDefaults(t *testing.T) {
 		t.Fatalf("Expected 4 register groups, got %d", len(dev.Groups))
 	}
 
-	expectedGroups := map[string]engine.ModbusTableType{
-		"holding_regs":    engine.TableHoldingRegister,
-		"input_regs":      engine.TableInputRegister,
-		"coils":           engine.TableCoil,
-		"discrete_inputs": engine.TableDiscreteInput,
+	if dev.ByteOrder != engine.DefaultByteOrder {
+		t.Fatalf("Expected default byte order %s, got %s", engine.DefaultByteOrder, dev.ByteOrder)
 	}
-	for groupID, table := range expectedGroups {
-		group, ok := dev.Groups[groupID]
-		if !ok {
-			t.Fatalf("Expected group %q not found", groupID)
+
+	expectedGroups := map[string]engine.ModbusTableType{
+		"Holding Registers": engine.TableHoldingRegister,
+		"Input Registers":   engine.TableInputRegister,
+		"Coils":             engine.TableCoil,
+		"Discrete Inputs":   engine.TableDiscreteInput,
+	}
+	for groupName, table := range expectedGroups {
+		var group *engine.RegisterGroup
+		for _, candidate := range dev.Groups {
+			if candidate.Name == groupName {
+				group = candidate
+				break
+			}
+		}
+		if group == nil {
+			t.Fatalf("Expected group %q not found in %+v", groupName, dev.Groups)
+		}
+		if group.ID == "" || group.ID == group.Name {
+			t.Errorf("Expected group %q to have hidden generated identity, got %q", groupName, group.ID)
 		}
 		if group.ModbusTable != table {
-			t.Errorf("Expected group %q table %v, got %v", groupID, table, group.ModbusTable)
+			t.Errorf("Expected group %q table %v, got %v", groupName, table, group.ModbusTable)
 		}
-		if len(group.Definitions) != 1 {
-			t.Fatalf("Expected group %q to have 1 definition, got %d", groupID, len(group.Definitions))
-		}
-		def := group.Definitions[0]
-		expectedType := "uint16"
-		if table == engine.TableCoil || table == engine.TableDiscreteInput {
-			expectedType = "bool"
-		}
-		if def.Register != 0 || def.Count != 10 || def.DataType != expectedType {
-			t.Errorf("Unexpected definition for group %q: %+v", groupID, def)
+		if len(group.Definitions) != 0 {
+			t.Fatalf("Expected group %q to start empty, got %d definitions", groupName, len(group.Definitions))
 		}
 	}
 }
@@ -194,7 +199,7 @@ func TestAppLoadConfigPromptsForAJsonFileReplacesProjectAndReturnsTheActiveDevic
 		t.Fatalf("AddDeviceWithDefaults failed: %v", err)
 	}
 	polledDevices := make(chan string, 10)
-	app.Engine.OnData = func(deviceID string, _ map[string]map[uint16]engine.PollResult) {
+	app.Engine.OnData = func(deviceID string, _ map[string]map[string]engine.PollResult) {
 		polledDevices <- deviceID
 	}
 

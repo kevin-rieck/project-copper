@@ -7,7 +7,15 @@ import * as AppBindings from '../wailsjs/go/main/App';
 vi.mock('../wailsjs/go/main/App', () => ({
     GetDeviceConfig: vi.fn(),
     AddRegisterGroup: vi.fn(),
-    AddRegisterDefinition: vi.fn()
+    AddRegisterDefinition: vi.fn(),
+    CreateRegisterDefinition: vi.fn(),
+    UpdateRegisterDefinition: vi.fn(),
+    DeleteRegisterDefinition: vi.fn(),
+    BulkCreateRegisterDefinitions: vi.fn(),
+    BulkDeleteRegisterDefinitions: vi.fn(),
+    BulkEditRegisterDefinitions: vi.fn(),
+    MoveRegisterDefinitions: vi.fn(),
+    DuplicateRegisterDefinitions: vi.fn()
 }));
 
 describe('RegisterBrowser Component', () => {
@@ -96,14 +104,51 @@ describe('RegisterBrowser Component', () => {
         // Submit
         await userEvent.click(screen.getByRole('button', { name: /Save Register/i }));
 
-        // count=1 for uint16
-        expect(AppBindings.AddRegisterDefinition).toHaveBeenCalledWith('dev1', 'group1', 2, 1, 'uint16');
+        expect(AppBindings.CreateRegisterDefinition).toHaveBeenCalledWith(expect.objectContaining({ device_id: 'dev1', group_id: 'group1', register: 2, count: 1, data_type: 'uint16' }));
         expect(AppBindings.GetDeviceConfig).toHaveBeenCalledTimes(2);
+    });
+
+    it('calls update and delete bindings from definition row actions', async () => {
+        render(<RegisterBrowser data={{}} deviceID="dev1" />);
+        await waitFor(() => expect(screen.getAllByText('Edit').length).toBeGreaterThan(0));
+
+        const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue('Renamed Point');
+        await userEvent.click(screen.getAllByText('Edit')[0]);
+        expect(AppBindings.UpdateRegisterDefinition).toHaveBeenCalledWith(expect.objectContaining({ device_id: 'dev1', group_id: 'group1', definition_id: '0', name: 'Renamed Point' }));
+        promptSpy.mockRestore();
+
+        const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+        await userEvent.click(screen.getAllByText('Delete')[0]);
+        expect(AppBindings.DeleteRegisterDefinition).toHaveBeenCalledWith(expect.objectContaining({ device_id: 'dev1', group_id: 'group1', definition_id: '0' }));
+        confirmSpy.mockRestore();
+    });
+
+    it('confirms and sends bulk delete for selected definitions', async () => {
+        render(<RegisterBrowser data={{}} deviceID="dev1" />);
+        await waitFor(() => expect(screen.getByLabelText('Select Register 0')).toBeInTheDocument());
+        await userEvent.click(screen.getByLabelText('Select Register 0'));
+        const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+        await userEvent.click(screen.getByRole('button', { name: /Bulk Delete/i }));
+        expect(confirmSpy).toHaveBeenCalledWith('Delete 1 selected data point(s)?');
+        expect(AppBindings.BulkDeleteRegisterDefinitions).toHaveBeenCalledWith(expect.objectContaining({ device_id: 'dev1', group_id: 'group1', definition_ids: ['0'] }));
+        confirmSpy.mockRestore();
+    });
+
+    it('sends bulk add request shape from the modal transaction', async () => {
+        render(<RegisterBrowser data={{}} deviceID="dev1" />);
+        await waitFor(() => expect(screen.getByRole('button', { name: /Bulk Add/i })).toBeInTheDocument());
+        await userEvent.click(screen.getByRole('button', { name: /Bulk Add/i }));
+        await userEvent.type(screen.getByLabelText('Bulk start address'), '10');
+        await userEvent.type(screen.getByLabelText('Bulk quantity'), '3');
+        await userEvent.clear(screen.getByLabelText('Bulk name pattern'));
+        await userEvent.type(screen.getByLabelText('Bulk name pattern'), 'Point');
+        await userEvent.click(screen.getByRole('button', { name: /Commit Bulk Add/i }));
+        expect(AppBindings.BulkCreateRegisterDefinitions).toHaveBeenCalledWith(expect.objectContaining({ device_id: 'dev1', group_id: 'group1', start_register: 10, quantity: 3, data_type: 'uint16', name_pattern: 'Point' }));
     });
 
     it('surfaces backend validation errors when a register definition cannot be added', async () => {
         const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
-        (AppBindings.AddRegisterDefinition as any).mockRejectedValue(
+        (AppBindings.CreateRegisterDefinition as any).mockRejectedValue(
             'register definition at 1 spanning 2 register(s) overlaps existing definition at 1 spanning 2 register(s) in group group1'
         );
 

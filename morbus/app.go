@@ -60,7 +60,7 @@ func (a *App) startup(ctx context.Context) {
 		}
 	}
 
-	a.Engine.OnData = func(deviceID string, results map[string]map[uint16]engine.PollResult) {
+	a.Engine.OnData = func(deviceID string, results map[string]map[string]engine.PollResult) {
 		runtime.EventsEmit(ctx, "modbusData", map[string]interface{}{
 			"deviceID": deviceID,
 			"data":     results,
@@ -124,14 +124,58 @@ func (a *App) AddDevice(id string, connID string, slaveID uint8) error {
 	return a.Engine.AddDevice(id, connID, slaveID)
 }
 
-// AddRegisterGroup adds a logical group of registers
-func (a *App) AddRegisterGroup(deviceID string, groupID string, table uint8) error {
-	// Wails usually passes uint8 as integer, we cast to engine.ModbusTableType
-	return a.Engine.AddRegisterGroup(deviceID, groupID, engine.ModbusTableType(table))
+// AddRegisterGroup adds a logical group of registers.
+func (a *App) AddRegisterGroup(deviceID string, groupName string, table uint8) error {
+	// Wails usually passes uint8 as integer, we cast to engine.ModbusTableType.
+	return a.Engine.AddRegisterGroup(deviceID, groupName, engine.ModbusTableType(table))
 }
 
-func (a *App) AddRegisterDefinition(deviceID string, groupID string, register uint16, count uint16, dataType string) error {
-	return a.Engine.AddRegisterDefinition(deviceID, groupID, register, count, dataType)
+func (a *App) AddRegisterDefinition(deviceID string, groupIDOrName string, register uint16, count uint16, dataType string) error {
+	return a.Engine.AddRegisterDefinition(deviceID, groupIDOrName, register, count, dataType)
+}
+
+func (a *App) CreateRegisterGroup(req engine.CreateRegisterGroupRequest) (*engine.Device, error) {
+	return a.Engine.CreateRegisterGroup(req)
+}
+
+func (a *App) UpdateRegisterGroup(req engine.UpdateRegisterGroupRequest) (*engine.Device, error) {
+	return a.Engine.UpdateRegisterGroup(req)
+}
+
+func (a *App) DeleteRegisterGroup(req engine.DeleteRegisterGroupRequest) (*engine.Device, error) {
+	return a.Engine.DeleteRegisterGroup(req)
+}
+
+func (a *App) CreateRegisterDefinition(req engine.CreateRegisterDefinitionRequest) (*engine.Device, error) {
+	return a.Engine.CreateRegisterDefinition(req)
+}
+
+func (a *App) UpdateRegisterDefinition(req engine.UpdateRegisterDefinitionRequest) (*engine.Device, error) {
+	return a.Engine.UpdateRegisterDefinition(req)
+}
+
+func (a *App) DeleteRegisterDefinition(req engine.DeleteRegisterDefinitionRequest) (*engine.Device, error) {
+	return a.Engine.DeleteRegisterDefinition(req)
+}
+
+func (a *App) BulkCreateRegisterDefinitions(req engine.BulkCreateRegisterDefinitionsRequest) (*engine.Device, error) {
+	return a.Engine.BulkCreateRegisterDefinitions(req)
+}
+
+func (a *App) BulkEditRegisterDefinitions(req engine.BulkEditRegisterDefinitionsRequest) (*engine.Device, error) {
+	return a.Engine.BulkEditRegisterDefinitions(req)
+}
+
+func (a *App) BulkDeleteRegisterDefinitions(req engine.BulkDeleteRegisterDefinitionsRequest) (*engine.Device, error) {
+	return a.Engine.BulkDeleteRegisterDefinitions(req)
+}
+
+func (a *App) MoveRegisterDefinitions(req engine.MoveRegisterDefinitionsRequest) (*engine.Device, error) {
+	return a.Engine.MoveRegisterDefinitions(req)
+}
+
+func (a *App) DuplicateRegisterDefinitions(req engine.DuplicateRegisterDefinitionsRequest) (*engine.Device, error) {
+	return a.Engine.DuplicateRegisterDefinitions(req)
 }
 
 // AddDeviceWithDefaults handles the complexity of creating a Connection, Device, and default registers
@@ -153,18 +197,11 @@ func (a *App) AddDeviceWithDefaults(uri string, slaveID uint8) error {
 		return err
 	}
 
-	// 3. Default Groups for all 4 tables
-	_ = a.AddRegisterGroup(devID, "holding_regs", uint8(engine.TableHoldingRegister))
-	_ = a.AddRegisterDefinition(devID, "holding_regs", 0, 10, "uint16")
-
-	_ = a.AddRegisterGroup(devID, "input_regs", uint8(engine.TableInputRegister))
-	_ = a.AddRegisterDefinition(devID, "input_regs", 0, 10, "uint16")
-
-	_ = a.AddRegisterGroup(devID, "coils", uint8(engine.TableCoil))
-	_ = a.AddRegisterDefinition(devID, "coils", 0, 10, "bool")
-
-	_ = a.AddRegisterGroup(devID, "discrete_inputs", uint8(engine.TableDiscreteInput))
-	_ = a.AddRegisterDefinition(devID, "discrete_inputs", 0, 10, "bool")
+	// 3. Default empty groups for all 4 tables.
+	_ = a.AddRegisterGroup(devID, "Holding Registers", uint8(engine.TableHoldingRegister))
+	_ = a.AddRegisterGroup(devID, "Input Registers", uint8(engine.TableInputRegister))
+	_ = a.AddRegisterGroup(devID, "Coils", uint8(engine.TableCoil))
+	_ = a.AddRegisterGroup(devID, "Discrete Inputs", uint8(engine.TableDiscreteInput))
 
 	// Ensure polling loop is started
 	a.StartPolling()

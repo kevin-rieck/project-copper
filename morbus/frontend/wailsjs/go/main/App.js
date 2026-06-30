@@ -22,6 +22,38 @@ export function AddRegisterGroup(arg1, arg2, arg3) {
   return window['go']['main']['App']['AddRegisterGroup'](arg1, arg2, arg3);
 }
 
+export function BulkCreateRegisterDefinitions(arg1) {
+  return window['go']['main']['App']['BulkCreateRegisterDefinitions'](arg1);
+}
+
+export function BulkDeleteRegisterDefinitions(arg1) {
+  return window['go']['main']['App']['BulkDeleteRegisterDefinitions'](arg1);
+}
+
+export function BulkEditRegisterDefinitions(arg1) {
+  return window['go']['main']['App']['BulkEditRegisterDefinitions'](arg1);
+}
+
+export function CreateRegisterDefinition(arg1) {
+  return window['go']['main']['App']['CreateRegisterDefinition'](arg1);
+}
+
+export function CreateRegisterGroup(arg1) {
+  return window['go']['main']['App']['CreateRegisterGroup'](arg1);
+}
+
+export function DeleteRegisterDefinition(arg1) {
+  return window['go']['main']['App']['DeleteRegisterDefinition'](arg1);
+}
+
+export function DeleteRegisterGroup(arg1) {
+  return window['go']['main']['App']['DeleteRegisterGroup'](arg1);
+}
+
+export function DuplicateRegisterDefinitions(arg1) {
+  return window['go']['main']['App']['DuplicateRegisterDefinitions'](arg1);
+}
+
 export function GetDeviceConfig(arg1) {
   return window['go']['main']['App']['GetDeviceConfig'](arg1);
 }
@@ -30,10 +62,22 @@ export function LoadConfig() {
   return window['go']['main']['App']['LoadConfig']();
 }
 
+export function MoveRegisterDefinitions(arg1) {
+  return window['go']['main']['App']['MoveRegisterDefinitions'](arg1);
+}
+
 export function SaveConfig() {
   return window['go']['main']['App']['SaveConfig']();
 }
 
 export function StartPolling() {
   return window['go']['main']['App']['StartPolling']();
+}
+
+export function UpdateRegisterDefinition(arg1) {
+  return window['go']['main']['App']['UpdateRegisterDefinition'](arg1);
+}
+
+export function UpdateRegisterGroup(arg1) {
+  return window['go']['main']['App']['UpdateRegisterGroup'](arg1);
 }

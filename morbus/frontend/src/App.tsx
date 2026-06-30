@@ -16,8 +16,8 @@ export default function App() {
   const [configRevision, setConfigRevision] = useState(0);
   const { addToast } = useToast();
 
-  const toggleWatch = (groupId: string, reg: number) => {
-    const id = `${groupId}:${reg}`;
+  const toggleWatch = (groupId: string, definitionId: string) => {
+    const id = `${groupId}:${definitionId}`;
     setWatchList(prev => prev.includes(id) ? prev.filter(r => r !== id) : [...prev, id]);
   };
 
@@ -341,9 +341,8 @@ export default function App() {
                         </thead>
                         <tbody className="text-sm font-data-mono">
                           {watchList.map(watchId => {
-                            const [groupId, regStr] = watchId.split(':');
-                            const reg = parseInt(regStr, 10);
-                            const pollResult = modbusData && modbusData[groupId] ? modbusData[groupId][reg] : null;
+                            const [groupId, definitionId] = watchId.split(':');
+                            const pollResult = modbusData && modbusData[groupId] ? modbusData[groupId][definitionId] : null;
                             
                             let displayVal = "--";
                             if (pollResult && pollResult.value !== undefined) {
@@ -357,13 +356,13 @@ export default function App() {
                             return (
                               <tr key={watchId} className="border-b border-outline-variant hover:bg-surface-container-lowest">
                                 <td className="px-4 py-2.5">
-                                  <button onClick={() => toggleWatch(groupId, reg)} className="text-primary hover:text-error transition-colors flex items-center justify-center" title="Remove from Watch List">
+                                  <button onClick={() => toggleWatch(groupId, definitionId)} className="text-primary hover:text-error transition-colors flex items-center justify-center" title="Remove from Watch List">
                                     <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
                                   </button>
                                 </td>
                                 <td className="px-4 py-2.5 text-on-surface font-body-sm truncate max-w-[100px]" title={activeDeviceID}>{activeDeviceID?.split('_')[0] || 'Unknown'}</td>
                                 <td className="px-4 py-2.5 text-on-surface font-body-sm">{groupId}</td>
-                                <td className="px-4 py-2.5 text-secondary">{reg}</td>
+                                <td className="px-4 py-2.5 text-secondary">{definitionId}</td>
                                 <td className="px-4 py-2.5 font-bold text-primary">{displayVal}</td>
                               </tr>
                             );

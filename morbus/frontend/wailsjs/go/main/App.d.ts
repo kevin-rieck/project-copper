@@ -13,10 +13,32 @@ export function AddRegisterDefinition(arg1:string,arg2:string,arg3:number,arg4:n
 
 export function AddRegisterGroup(arg1:string,arg2:string,arg3:number):Promise<void>;
 
+export function BulkCreateRegisterDefinitions(arg1:engine.BulkCreateRegisterDefinitionsRequest):Promise<engine.Device>;
+
+export function BulkDeleteRegisterDefinitions(arg1:engine.BulkDeleteRegisterDefinitionsRequest):Promise<engine.Device>;
+
+export function BulkEditRegisterDefinitions(arg1:engine.BulkEditRegisterDefinitionsRequest):Promise<engine.Device>;
+
+export function CreateRegisterDefinition(arg1:engine.CreateRegisterDefinitionRequest):Promise<engine.Device>;
+
+export function CreateRegisterGroup(arg1:engine.CreateRegisterGroupRequest):Promise<engine.Device>;
+
+export function DeleteRegisterDefinition(arg1:engine.DeleteRegisterDefinitionRequest):Promise<engine.Device>;
+
+export function DeleteRegisterGroup(arg1:engine.DeleteRegisterGroupRequest):Promise<engine.Device>;
+
+export function DuplicateRegisterDefinitions(arg1:engine.DuplicateRegisterDefinitionsRequest):Promise<engine.Device>;
+
 export function GetDeviceConfig(arg1:string):Promise<engine.Device>;
 
 export function LoadConfig():Promise<main.ConfigLoadResult>;
 
+export function MoveRegisterDefinitions(arg1:engine.MoveRegisterDefinitionsRequest):Promise<engine.Device>;
+
 export function SaveConfig():Promise<void>;
 
 export function StartPolling():Promise<void>;
+
+export function UpdateRegisterDefinition(arg1:engine.UpdateRegisterDefinitionRequest):Promise<engine.Device>;
+
+export function UpdateRegisterGroup(arg1:engine.UpdateRegisterGroupRequest):Promise<engine.Device>;

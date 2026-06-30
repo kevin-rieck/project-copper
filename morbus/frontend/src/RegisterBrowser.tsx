@@ -1,21 +1,21 @@
 import React, { useState } from 'react';
 import { decodeModbusBuffer, ByteOrder } from './utils/decoder';
 
-import { GetDeviceConfig, AddRegisterGroup, AddRegisterDefinition } from '../wailsjs/go/main/App';
+import { GetDeviceConfig, AddRegisterGroup, AddRegisterDefinition, CreateRegisterDefinition, UpdateRegisterDefinition, DeleteRegisterDefinition, BulkCreateRegisterDefinitions, BulkDeleteRegisterDefinitions, BulkEditRegisterDefinitions, MoveRegisterDefinitions, DuplicateRegisterDefinitions } from '../wailsjs/go/main/App';
 import { engine } from '../wailsjs/go/models';
 
 interface RegisterBrowserProps {
     data: Record<string, any>;
     deviceID?: string;
     watchList?: string[];
-    onToggleWatch?: (groupId: string, reg: number) => void;
+    onToggleWatch?: (groupId: string, definitionId: string) => void;
 }
 
 export const RegisterBrowser: React.FC<RegisterBrowserProps> = ({ data, deviceID = "dev1", watchList = [], onToggleWatch }) => {
     const [deviceConfig, setDeviceConfig] = useState<engine.Device | null>(null);
     const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
-    const [selectedReg, setSelectedReg] = useState<number | null>(null);
-    const [byteOrders, setByteOrders] = useState<Record<number, ByteOrder>>({});
+    const [selectedDefinitionId, setSelectedDefinitionId] = useState<string | null>(null);
+    const [byteOrders, setByteOrders] = useState<Record<string, ByteOrder>>({});
 
     const [showAddGroup, setShowAddGroup] = useState(false);
     const [newGroupName, setNewGroupName] = useState('');
@@ -24,6 +24,11 @@ export const RegisterBrowser: React.FC<RegisterBrowserProps> = ({ data, deviceID
     const [showAddDef, setShowAddDef] = useState(false);
     const [newDefAddress, setNewDefAddress] = useState('');
     const [newDefType, setNewDefType] = useState('uint16');
+    const [selectedDefinitionIds, setSelectedDefinitionIds] = useState<string[]>([]);
+    const [showBulkAdd, setShowBulkAdd] = useState(false);
+    const [bulkStart, setBulkStart] = useState('');
+    const [bulkQuantity, setBulkQuantity] = useState('');
+    const [bulkNamePattern, setBulkNamePattern] = useState('Register {address}');
 
     const modbusTableLabels: Record<number, string> = {
         0: 'Coils (0x)',
@@ -32,15 +37,18 @@ export const RegisterBrowser: React.FC<RegisterBrowserProps> = ({ data, deviceID
         4: 'Input Registers (3x)'
     };
 
+    const groupsFor = (config: any): any[] => {
+        if (!config?.groups) return [];
+        return Array.isArray(config.groups) ? config.groups : Object.values(config.groups);
+    };
+
     const loadConfig = async () => {
         try {
             const config = await GetDeviceConfig(deviceID);
             setDeviceConfig(config as any);
-            if (config && config.groups) {
-                const groupIds = Object.keys(config.groups);
-                if (groupIds.length > 0 && !selectedGroupId) {
-                    setSelectedGroupId(groupIds[0]);
-                }
+            const groups = groupsFor(config);
+            if (groups.length > 0 && !selectedGroupId) {
+                setSelectedGroupId(groups[0].id || groups[0].name);
             }
         } catch (err) {
             console.error("Failed to load device config:", err);
@@ -69,7 +77,7 @@ export const RegisterBrowser: React.FC<RegisterBrowserProps> = ({ data, deviceID
             if (!newDefAddress || !selectedGroupId) return;
             const addr = parseInt(newDefAddress, 10);
             const count = newDefType === 'float32' ? 2 : 1;
-            await AddRegisterDefinition(deviceID, selectedGroupId, addr, count, newDefType);
+            await CreateRegisterDefinition({ device_id: deviceID, group_id: selectedGroupId, name: `Register ${addr}`, register: addr, count, data_type: newDefType, byte_order: newDefType === 'float32' ? 'ABCD' : '' } as any);
             setShowAddDef(false);
             setNewDefAddress('');
             await loadConfig();
@@ -83,48 +91,108 @@ export const RegisterBrowser: React.FC<RegisterBrowserProps> = ({ data, deviceID
     let definitions: any[] = [];
     let groupName = "Unknown";
     
-    if (deviceConfig && selectedGroupId && deviceConfig.groups[selectedGroupId]) {
-        const group = deviceConfig.groups[selectedGroupId];
-        definitions = group.definitions || [];
-        groupName = group.id;
+    if (deviceConfig && selectedGroupId) {
+        const group = groupsFor(deviceConfig).find((candidate: any) => candidate.id === selectedGroupId || candidate.name === selectedGroupId);
+        if (group) {
+            definitions = group.definitions || [];
+            groupName = group.name || group.id;
+        }
     }
 
-    // Expand definitions based on count
-    const displayDefinitions: any[] = [];
-    definitions.forEach(d => {
-        if (d.data_type === 'bool') {
-            for (let i = 0; i < d.count; i++) {
-                displayDefinitions.push({
-                    register: d.register + i,
-                    type: 'Bool',
-                    name: `Address ${d.register + i}`
-                });
-            }
-        } else if (d.data_type === 'uint16') {
-            for (let i = 0; i < d.count; i++) {
-                displayDefinitions.push({
-                    register: d.register + i,
-                    type: 'UInt16',
-                    name: `Register ${d.register + i}`
-                });
-            }
-        } else if (d.data_type === 'float32') {
-            // float32 spans 2 registers but represents 1 logical value
-            const numValues = Math.floor(d.count / 2);
-            for (let i = 0; i < numValues; i++) {
-                displayDefinitions.push({
-                    register: d.register + (i * 2),
-                    type: 'Float32',
-                    name: `Register ${d.register + (i * 2)} (Float)`
-                });
-            }
-        }
-    });
+    const displayDefinitions: any[] = definitions.map(d => ({
+        ...d,
+        id: d.id || `${d.register}`,
+        name: d.name || (d.data_type === 'bool' ? `Address ${d.register}` : `Register ${d.register}`),
+        type: d.data_type === 'bool' ? 'Bool' : d.data_type === 'float32' ? 'Float32' : 'UInt16',
+        range: d.count > 1 ? `${d.register}-${d.register + d.count - 1}` : `${d.register}`,
+    }));
 
     const selectedGroupData = selectedGroupId && data ? data[selectedGroupId] : null;
-    const selectedDef = selectedReg !== null ? displayDefinitions.find(d => d.register === selectedReg) : null;
-    const selectedData = selectedReg !== null && selectedGroupData ? selectedGroupData[selectedReg] : null;
-    const selectedByteOrder = selectedReg !== null ? (byteOrders[selectedReg] || 'ABCD') : 'ABCD';
+    const selectedDef = selectedDefinitionId !== null ? displayDefinitions.find(d => d.id === selectedDefinitionId) : null;
+    const selectedData = selectedDefinitionId !== null && selectedGroupData ? (selectedGroupData[selectedDefinitionId] || selectedGroupData[selectedDef?.register]) : null;
+    const selectedByteOrder = selectedDefinitionId !== null ? (byteOrders[selectedDefinitionId] || selectedDef?.byte_order || 'ABCD') : 'ABCD';
+
+    const handleEditDefinition = async (def: any) => {
+        const name = window.prompt('Data point name', def.name || '');
+        if (name === null || !selectedGroupId) return;
+        await UpdateRegisterDefinition({ device_id: deviceID, group_id: selectedGroupId, definition_id: def.id, name, register: def.register, count: def.count, data_type: def.data_type, byte_order: def.byte_order || '' } as any);
+        await loadConfig();
+    };
+
+    const handleDeleteDefinition = async (def: any) => {
+        if (!selectedGroupId || !window.confirm(`Delete ${def.name}?`)) return;
+        await DeleteRegisterDefinition({ device_id: deviceID, group_id: selectedGroupId, definition_id: def.id } as any);
+        if (selectedDefinitionId === def.id) setSelectedDefinitionId(null);
+        await loadConfig();
+    };
+
+    const handleBulkDelete = async () => {
+        if (!selectedGroupId || selectedDefinitionIds.length === 0 || !window.confirm(`Delete ${selectedDefinitionIds.length} selected data point(s)?`)) return;
+        try {
+            await BulkDeleteRegisterDefinitions({ device_id: deviceID, group_id: selectedGroupId, definition_ids: selectedDefinitionIds } as any);
+            setSelectedDefinitionIds([]);
+            await loadConfig();
+        } catch (err) {
+            alert(`Failed to bulk delete: ${err}`);
+        }
+    };
+
+    const handleBulkAdd = async () => {
+        if (!selectedGroupId) return;
+        try {
+            await BulkCreateRegisterDefinitions({ device_id: deviceID, group_id: selectedGroupId, start_register: parseInt(bulkStart, 10), quantity: parseInt(bulkQuantity, 10), data_type: newDefType, name_pattern: bulkNamePattern } as any);
+            setShowBulkAdd(false);
+            setBulkStart('');
+            setBulkQuantity('');
+            await loadConfig();
+        } catch (err) {
+            alert(`Failed to bulk add: ${err}`);
+        }
+    };
+
+    const handleBulkEdit = async () => {
+        if (!selectedGroupId || selectedDefinitionIds.length === 0) return;
+        const dataType = window.prompt('Bulk data type (bool, uint16, float32)', newDefType);
+        if (!dataType) return;
+        try {
+            await BulkEditRegisterDefinitions({ device_id: deviceID, group_id: selectedGroupId, definition_ids: selectedDefinitionIds, data_type: dataType, count: dataType === 'float32' ? 2 : 1, byte_order: dataType === 'float32' ? 'ABCD' : '' } as any);
+            await loadConfig();
+        } catch (err) {
+            alert(`Failed to bulk edit: ${err}`);
+        }
+    };
+
+    const sameTableTargets = deviceConfig && selectedGroupId
+        ? groupsFor(deviceConfig).filter((group: any) => group.id !== selectedGroupId && groupsFor(deviceConfig).find((candidate: any) => candidate.id === selectedGroupId)?.modbus_table === group.modbus_table)
+        : [];
+
+    const handleMoveSelected = async () => {
+        if (!selectedGroupId || selectedDefinitionIds.length === 0 || sameTableTargets.length === 0) return;
+        const targetName = window.prompt('Move to group', sameTableTargets[0].name || sameTableTargets[0].id);
+        const target = sameTableTargets.find((group: any) => group.name === targetName || group.id === targetName);
+        if (!target) return;
+        try {
+            await MoveRegisterDefinitions({ device_id: deviceID, source_group_id: selectedGroupId, target_group_id: target.id, definition_ids: selectedDefinitionIds } as any);
+            setSelectedDefinitionIds([]);
+            await loadConfig();
+        } catch (err) {
+            alert(`Failed to move: ${err}`);
+        }
+    };
+
+    const handleDuplicateSelected = async () => {
+        if (!selectedGroupId || selectedDefinitionIds.length === 0) return;
+        const offset = parseInt(window.prompt('Address offset', '1') || '', 10);
+        if (Number.isNaN(offset)) return;
+        try {
+            await DuplicateRegisterDefinitions({ device_id: deviceID, source_group_id: selectedGroupId, target_group_id: selectedGroupId, definition_ids: selectedDefinitionIds, address_offset: offset, name_pattern: '{name} Copy' } as any);
+            await loadConfig();
+        } catch (err) {
+            alert(`Failed to duplicate: ${err}`);
+        }
+    };
+
+    const allSelected = displayDefinitions.length > 0 && displayDefinitions.every(def => selectedDefinitionIds.includes(def.id));
 
     if (!deviceConfig) {
         return (
@@ -148,7 +216,7 @@ export const RegisterBrowser: React.FC<RegisterBrowserProps> = ({ data, deviceID
                 <div className="flex-1 overflow-y-auto p-2">
                     <ul className="space-y-4">
                         {[0, 1, 3, 4].map((tableType) => {
-                            const tableGroups = deviceConfig ? Object.values(deviceConfig.groups).filter((g: any) => g.modbus_table === tableType) : [];
+                            const tableGroups = deviceConfig ? groupsFor(deviceConfig).filter((g: any) => g.modbus_table === tableType) : [];
                             if (tableGroups.length === 0) return null;
                             
                             return (
@@ -165,7 +233,7 @@ export const RegisterBrowser: React.FC<RegisterBrowserProps> = ({ data, deviceID
                                                 className={`flex items-center gap-2 px-2 py-1 bg-surface-container hover:bg-surface-container-highest rounded cursor-pointer ${selectedGroupId === group.id ? 'text-primary' : 'text-on-surface'}`}
                                             >
                                                 <span className="material-symbols-outlined text-[16px] text-secondary">memory</span>
-                                                <span className="text-sm font-medium">{group.id}</span>
+                                                <span className="text-sm font-medium">{group.name || group.id}</span>
                                             </li>
                                         ))}
                                     </ul>
@@ -217,6 +285,11 @@ export const RegisterBrowser: React.FC<RegisterBrowserProps> = ({ data, deviceID
                         <span className="text-label-caps font-label-caps text-on-surface">Data Points: {groupName}</span>
                     </div>
                     <div className="flex items-center gap-2">
+                        <button onClick={handleBulkDelete} disabled={selectedDefinitionIds.length === 0} className="border border-outline-variant text-xs px-3 py-1.5 rounded disabled:opacity-50">Bulk Delete</button>
+                        <button onClick={handleBulkEdit} disabled={selectedDefinitionIds.length === 0} className="border border-outline-variant text-xs px-3 py-1.5 rounded disabled:opacity-50">Bulk Edit</button>
+                        <button onClick={handleMoveSelected} disabled={selectedDefinitionIds.length === 0 || sameTableTargets.length === 0} className="border border-outline-variant text-xs px-3 py-1.5 rounded disabled:opacity-50">Move</button>
+                        <button onClick={handleDuplicateSelected} disabled={selectedDefinitionIds.length === 0} className="border border-outline-variant text-xs px-3 py-1.5 rounded disabled:opacity-50">Duplicate</button>
+                        <button onClick={() => setShowBulkAdd(true)} disabled={!selectedGroupId} className="border border-outline-variant text-xs px-3 py-1.5 rounded disabled:opacity-50">Bulk Add</button>
                         {showAddDef ? (
                             <div className="flex items-center gap-2">
                                 <input 
@@ -236,37 +309,51 @@ export const RegisterBrowser: React.FC<RegisterBrowserProps> = ({ data, deviceID
                                     <option value="uint16">UInt16</option>
                                     <option value="float32">Float32</option>
                                 </select>
-                                <button onClick={handleAddDef} className="bg-primary text-on-primary text-xs font-bold px-3 py-1.5 rounded">Save Register</button>
+                                <button aria-label="Save Register / Save Data Point" onClick={handleAddDef} className="bg-primary text-on-primary text-xs font-bold px-3 py-1.5 rounded">Save Data Point</button>
                                 <button onClick={() => setShowAddDef(false)} className="border border-outline-variant text-on-surface-variant text-xs px-2 py-1.5 rounded">Cancel</button>
                             </div>
                         ) : (
                             <button 
+                                aria-label="Add Register / Add Data Point"
                                 onClick={() => setShowAddDef(true)}
                                 disabled={!selectedGroupId}
                                 className="flex items-center gap-1 bg-primary text-on-primary hover:brightness-110 transition-all text-xs font-bold px-3 py-1.5 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <span className="material-symbols-outlined text-[16px]">add</span>
-                                Add Register
+                                Add Data Point
                             </button>
                         )}
                     </div>
                 </div>
+                {showBulkAdd && (
+                    <div className="px-4 py-2 border-b border-outline-variant bg-surface-container flex items-center gap-2">
+                        <span className="text-xs text-on-surface-variant">Bulk add preview: {bulkQuantity || 0} data point(s)</span>
+                        <input aria-label="Bulk start address" placeholder="Start" value={bulkStart} onChange={(e) => setBulkStart(e.target.value)} className="w-20 bg-background border border-outline-variant rounded px-2 py-1 text-sm" />
+                        <input aria-label="Bulk quantity" placeholder="Qty" value={bulkQuantity} onChange={(e) => setBulkQuantity(e.target.value)} className="w-20 bg-background border border-outline-variant rounded px-2 py-1 text-sm" />
+                        <input aria-label="Bulk name pattern" placeholder="Register {address}" value={bulkNamePattern} onChange={(e) => setBulkNamePattern(e.target.value)} className="w-44 bg-background border border-outline-variant rounded px-2 py-1 text-sm" />
+                        <button onClick={handleBulkAdd} className="bg-primary text-on-primary text-xs font-bold px-3 py-1.5 rounded">Commit Bulk Add</button>
+                        <button onClick={() => setShowBulkAdd(false)} className="border border-outline-variant text-xs px-3 py-1.5 rounded">Cancel</button>
+                    </div>
+                )}
+                <p className="px-4 py-2 text-xs text-on-surface-variant border-b border-outline-variant">Protocol offsets are 0-based, not 40001-style references.</p>
                 <div className="flex-1 overflow-auto">
                     <table className="w-full text-left border-collapse whitespace-nowrap">
                         <thead className="sticky top-0 bg-surface-container z-10 border-b border-outline-variant shadow-sm text-label-caps font-label-caps text-on-surface-variant uppercase">
                             <tr>
-                                <th className="px-4 py-2 font-normal w-10"></th>
-                                <th className="px-4 py-2 font-normal">Address</th>
+                                <th className="px-4 py-2 font-normal w-10"><input aria-label="Select all data points" type="checkbox" checked={allSelected} onChange={(e) => setSelectedDefinitionIds(e.target.checked ? displayDefinitions.map(def => def.id) : [])} /></th>
+                                <th className="px-4 py-2 font-normal">Address / Range</th>
+                                <th className="px-4 py-2 font-normal">Count</th>
                                 <th className="px-4 py-2 font-normal">Name</th>
-                                <th className="px-4 py-2 font-normal">Raw (Hex)</th>
-                                <th className="px-4 py-2 font-normal">Value</th>
                                 <th className="px-4 py-2 font-normal">Type</th>
+                                <th className="px-4 py-2 font-normal">Raw Summary</th>
+                                <th className="px-4 py-2 font-normal">Value Summary</th>
+                                <th className="px-4 py-2 font-normal">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="text-sm font-data-mono">
                             {displayDefinitions.map((def) => {
-                                const pollResult = selectedGroupData ? selectedGroupData[def.register] : null;
-                                const bo = byteOrders[def.register] || 'ABCD';
+                                const pollResult = selectedGroupData ? (selectedGroupData[def.id] || selectedGroupData[def.register]) : null;
+                                const bo = byteOrders[def.id] || def.byte_order || 'ABCD';
                                 let displayVal = "--";
                                 if (pollResult) {
                                     if (def.type === 'Bool') {
@@ -281,18 +368,19 @@ export const RegisterBrowser: React.FC<RegisterBrowserProps> = ({ data, deviceID
                                     ? pollResult.raw.map((w: number) => "0x" + w.toString(16).padStart(4, '0').toUpperCase()).join(" ") 
                                     : (def.type === 'Bool' ? (pollResult ? (pollResult.value ? "1" : "0") : "-") : "0x----");
 
-                                const watchId = `${selectedGroupId}:${def.register}`;
+                                const watchId = `${selectedGroupId}:${def.id}`;
 
                                 return (
                                     <tr 
-                                        key={def.register} 
-                                        onClick={() => setSelectedReg(def.register)}
-                                        className={`border-b border-outline-variant hover:bg-surface-container-lowest cursor-pointer ${selectedReg === def.register ? 'bg-surface-container-highest border-l-2 border-l-primary' : ''}`}
+                                        key={def.id} 
+                                        onClick={() => setSelectedDefinitionId(def.id)}
+                                        className={`border-b border-outline-variant hover:bg-surface-container-lowest cursor-pointer ${selectedDefinitionId === def.id ? 'bg-surface-container-highest border-l-2 border-l-primary' : ''}`}
                                     >
-                                        <td className="px-4 py-2.5">
+                                        <td className="px-4 py-2.5 flex items-center gap-2">
+                                            <input aria-label={`Select ${def.name}`} type="checkbox" checked={selectedDefinitionIds.includes(def.id)} onClick={(e) => e.stopPropagation()} onChange={(e) => setSelectedDefinitionIds(prev => e.target.checked ? [...prev, def.id] : prev.filter(id => id !== def.id))} />
                                             {onToggleWatch && (
                                                 <button 
-                                                    onClick={(e) => { e.stopPropagation(); onToggleWatch(selectedGroupId!, def.register); }}
+                                                    onClick={(e) => { e.stopPropagation(); onToggleWatch(selectedGroupId!, def.id); }}
                                                     className="text-on-surface-variant hover:text-primary transition-colors flex items-center justify-center"
                                                     title={watchList?.includes(watchId) ? "Remove from Watch List" : "Add to Watch List"}
                                                 >
@@ -302,11 +390,16 @@ export const RegisterBrowser: React.FC<RegisterBrowserProps> = ({ data, deviceID
                                                 </button>
                                             )}
                                         </td>
-                                        <td className="px-4 py-2.5 text-secondary">{def.register}</td>
+                                        <td className="px-4 py-2.5 text-secondary">{def.range}</td>
+                                        <td className="px-4 py-2.5 text-on-surface-variant">{def.count}</td>
                                         <td className="px-4 py-2.5 font-body-sm text-on-surface">{def.name}</td>
+                                        <td className="px-4 py-2.5"><span className="px-1.5 py-0.5 rounded bg-surface-container-highest text-on-surface-variant text-[11px] border border-outline-variant">{def.type}</span></td>
                                         <td className="px-4 py-2.5 text-on-surface-variant">{rawHex}</td>
                                         <td className="px-4 py-2.5 font-bold text-primary">{displayVal}</td>
-                                        <td className="px-4 py-2.5"><span className="px-1.5 py-0.5 rounded bg-surface-container-highest text-on-surface-variant text-[11px] border border-outline-variant">{def.type}</span></td>
+                                        <td className="px-4 py-2.5 flex gap-2">
+                                            <button onClick={(e) => { e.stopPropagation(); handleEditDefinition(def); }} className="text-primary hover:underline">Edit</button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleDeleteDefinition(def); }} className="text-error hover:underline">Delete</button>
+                                        </td>
                                     </tr>
                                 );
                             })}
@@ -328,7 +421,7 @@ export const RegisterBrowser: React.FC<RegisterBrowserProps> = ({ data, deviceID
                         <>
                             <div>
                                 <h3 className="text-base font-semibold text-on-surface leading-tight">{selectedDef.name}</h3>
-                                <p className="text-body-sm text-on-surface-variant">Address: {selectedDef.register}</p>
+                                <p className="text-body-sm text-on-surface-variant">Address range: {selectedDef.range}</p>
                             </div>
                             
                             <div>
@@ -359,7 +452,7 @@ export const RegisterBrowser: React.FC<RegisterBrowserProps> = ({ data, deviceID
                                 <select 
                                     className="w-full bg-surface-container-lowest border border-outline-variant rounded px-2 py-1.5 text-sm text-on-surface outline-none focus:border-primary"
                                     value={selectedByteOrder}
-                                    onChange={(e) => setByteOrders({ ...byteOrders, [selectedReg!]: e.target.value as ByteOrder })}
+                                    onChange={(e) => setByteOrders({ ...byteOrders, [selectedDefinitionId!]: e.target.value as ByteOrder })}
                                 >
                                     <option value="ABCD">Big Endian (ABCD)</option>
                                     <option value="DCBA">Little Endian (DCBA)</option>
@@ -371,8 +464,7 @@ export const RegisterBrowser: React.FC<RegisterBrowserProps> = ({ data, deviceID
                     ) : (
                         <div className="flex flex-col items-center justify-center h-full text-on-surface-variant opacity-60 pt-10">
                             <span className="material-symbols-outlined text-4xl mb-2">touch_app</span>
-                            <p className="text-center text-sm">Select a register<br/>to inspect its data.</p>
-                        </div>
+                            <p className="text-center text-sm">Select a data point<br/>to inspect its data.</p>                        </div>
                     )}
                 </div>
             </aside>
