@@ -24,6 +24,16 @@ The polling engine will:
 3. Issue a single bulk Modbus request (or chunked requests if the span exceeds the Modbus maximum of ~125 registers) to fetch the entire memory block into a raw byte buffer.
 4. Iterate over the `RegisterDefinitions` in memory, decoding their specific data types directly from the cached byte buffer.
 
+## Amendment: Chunked and Gap-Aware Reads
+
+RegisterGroup polling will split reads into chunks when a group's definitions are too large or too sparse for a single efficient request.
+
+- Register tables use a maximum chunk span of 125 registers.
+- Coil and discrete input tables use a maximum chunk span of 2000 bits.
+- Register-table chunks split across gaps larger than 16 addresses.
+- Coil and discrete-input chunks split across gaps larger than 64 addresses.
+- If any chunk fails, the current poll fails as a whole; partial per-definition telemetry is deferred until the domain has explicit stale/error semantics.
+
 ## Consequences
 
 **Positive:**
